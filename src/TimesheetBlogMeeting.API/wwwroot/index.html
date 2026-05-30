@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>777LAB</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <!-- ===== Header ===== -->
+  <header class="app-header">
+    <div class="app-header-inner">
+      <div class="app-logo">
+        <span class="mark">777<em>LAB</em></span>
+        <span class="sub">Workspace</span>
+      </div>
+      <div class="app-user">
+        <div class="who">
+          <b id="user-fullname">—</b><br />
+          <span id="user-role-tag" class="role-tag role-customer">Customer</span>
+        </div>
+        <button class="logout-btn" id="logout-btn">Đăng xuất</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== Tabs ===== -->
+  <nav class="tabbar">
+    <div class="tabbar-inner">
+      <button class="tab active" data-view="blog"><span class="ico">📰</span> Blog</button>
+      <button class="tab" data-view="timesheet"><span class="ico">🗓️</span> Chấm công</button>
+      <button class="tab" data-view="meeting"><span class="ico">📅</span> Lịch họp</button>
+      <button class="tab hidden" data-view="users" id="tab-users"><span class="ico">👥</span> Người dùng</button>
+    </div>
+  </nav>
+
+  <main class="container">
+    <!-- ===== View: Blog ===== -->
+    <section class="view active" id="view-blog">
+      <div class="view-head">
+        <div class="titles">
+          <h2>Blog &amp; Bài viết</h2>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-primary" id="btn-new-blog">+ Đăng bài mới</button>
+        </div>
+      </div>
+      <div id="blog-container">
+        <div class="spinner"></div>
+      </div>
+    </section>
+
+    <!-- ===== View: Timesheet ===== -->
+    <section class="view" id="view-timesheet">
+      <div class="view-head">
+        <div class="titles">
+          <h2>Bảng chấm công</h2>
+          <p id="timesheet-sub" class="view-sub"></p>
+        </div>
+        <div class="view-actions" id="timesheet-actions"></div>
+      </div>
+      <div id="timesheet-container">
+        <div class="spinner"></div>
+      </div>
+    </section>
+
+    <!-- ===== View: Meeting ===== -->
+    <section class="view" id="view-meeting">
+      <div class="view-head">
+        <div class="titles">
+          <h2>Đăng ký lịch họp</h2>
+        </div>
+      </div>
+      <div id="meeting-container">
+        <div class="spinner"></div>
+      </div>
+    </section>
+
+    <!-- ===== View: Users (admin) ===== -->
+    <section class="view" id="view-users">
+      <div class="view-head">
+        <div class="titles">
+          <div class="kicker">Quản trị</div>
+          <h2>Quản lý người dùng</h2>
+          <p>Thêm, sửa, xoá tài khoản và phân quyền.</p>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-primary" id="btn-new-user">+ Thêm người dùng</button>
+        </div>
+      </div>
+      <div id="users-container">
+        <div class="spinner"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ===== Modal ===== -->
+  <div class="modal-overlay hidden" id="modal-overlay">
+    <div class="modal" id="modal-box">
+      <div class="modal-head">
+        <h3 id="modal-title">—</h3>
+        <button class="modal-close" id="modal-close">&times;</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-foot" id="modal-foot"></div>
+    </div>
+  </div>
+
+  <div id="toast-stack"></div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/app.js"></script>
+  <script src="/js/blog.js"></script>
+  <script src="/js/timesheet.js"></script>
+  <script src="/js/meeting.js"></script>
+  <script src="/js/users.js"></script>
+</body>
+</html>

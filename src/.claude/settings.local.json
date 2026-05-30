@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p \"/mnt/e/Project/TimesheetBlogMeeting/src/TimesheetBlogMeeting.API/Helpers\")",
+      "PowerShell(New-Item -ItemType Directory -Force \"E:\\\\Project\\\\TimesheetBlogMeeting\\\\src\\\\TimesheetBlogMeeting.API\\\\Helpers\")"
+    ]
+  }
+}
