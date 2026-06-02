@@ -45,6 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   document.getElementById('logout-btn').textContent = t('logout');
+  document.getElementById('logout-btn').addEventListener('click', logout);
 
   // Language flag click
   document.getElementById('lang-flag').addEventListener('click', () => {

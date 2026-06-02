@@ -74,7 +74,7 @@ function renderLeave(table) {
   if (cols.length === 0) {
     box.innerHTML = `
       <div class="card"><div class="empty">
-        <span class="ico">🌴</span>
+        <span class="ico"><img src="/img/chars-sm/Char 4.2.png" width="20" height="20"></span>
         <p><b>Chưa có bảng phép tồn.</b></p>
         <p>${admin
           ? 'Hãy bấm <b>Import Excel</b> — bảng sẽ được dựng theo đúng các cột trong file của bạn.'
