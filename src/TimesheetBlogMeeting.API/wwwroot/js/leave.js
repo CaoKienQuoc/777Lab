@@ -3,37 +3,85 @@
    ========================================================================= */
 
 const JA_HEADER_MAP = {
-  'họ tên': '名前', 'họ và tên': '名前', 'tên': '名前', 'name': '名前',
-  'mã nhân viên': '社員番号', 'mã': '社員番号', 'id': '社員番号',
+  // Cột bảng Phép tồn
+  'stt': '番号', 'code': 'コード', 'team': 'チーム', 'còn lại': '残日数',
+  'ngày nghỉ (đã sd)': '取得日数', 'ngày nghỉ(đã sd)': '取得日数', 'nghỉ phép không lương': '無給休暇',
+  // tiếng Việt
+  'họ tên': '名前', 'họ và tên': '名前', 'tên': '名前', 'tên nhân viên': '名前', 'name': '名前', 'full name': 'フルネーム',
+  'mã nhân viên': '社員番号', 'mã': '社員番号', 'id': '社員番号', 'mã nv': '社員番号', 'staff id': '社員番号',
   'phòng ban': '部署', 'bộ phận': '部署', 'department': '部署',
   'chức vụ': '職位', 'vị trí': '職位', 'position': '職位',
-  'ngày': '日付', 'ngày làm việc': '就業日', 'ngày công': '就業日', 'date': '日付',
-  'giờ vào': '出勤時間', 'check in': '出勤時間', 'checkin': '出勤時間', 'time in': '出勤時間',
-  'giờ ra': '退勤時間', 'check out': '退勤時間', 'checkout': '退勤時間', 'time out': '退勤時間',
-  'số giờ': '勤務時間', 'giờ công': '勤務時間', 'work hours': '勤務時間', 'hours': '勤務時間',
-  'tăng ca': '残業', 'ot': '残業', 'overtime': '残業',
-  'nghỉ phép': '有給休暇', 'phép năm': '有給休暇', 'annual leave': '有給休暇',
-  'nghỉ ốm': '病欠', 'sick leave': '病欠',
-  'nghỉ việc riêng': '私用休暇', 'personal leave': '私用休暇',
-  'lý do': '理由', 'note': '備考', 'ghi chú': '備考', 'remarks': '備考', 'description': '説明',
-  'duyệt': '承認', 'trạng thái': 'ステータス', 'status': 'ステータス',
-  'người duyệt': '承認者', 'approved by': '承認者',
-  'ngày tạo': '作成日', 'created': '作成日', 'created at': '作成日',
-  'công ty': '会社', 'company': '会社',
-  'loại': '種類', 'type': '種類',
-  'từ ngày': '開始日', 'đến ngày': '終了日',
-  'số ngày': '日数', 'days': '日数',
-  'tổng': '合計', 'total': '合計',
-  'tháng': '月', 'month': '月',
+  'ngày': '日付', 'ngày làm việc': '就業日', 'ngày công': '就業日', 'date': '日付', 'ngày bắt đầu': '開始日', 'ngày kết thúc': '終了日',
+  'tháng': '月', 'month': '月', 'tháng/năm': '月/年',
   'năm': '年', 'year': '年',
+  'từ ngày': '開始日', 'đến ngày': '終了日', 'from': '開始日', 'to': '終了日',
+  'giờ vào': '出勤時間', 'check in': '出勤時間', 'checkin': '出勤時間', 'time in': '出勤時間', 'giờ bắt đầu': '開始時間', 'start time': '開始時間',
+  'giờ ra': '退勤時間', 'check out': '退勤時間', 'checkout': '退勤時間', 'time out': '退勤時間', 'giờ kết thúc': '終了時間', 'end time': '終了時間',
+  'số giờ': '勤務時間', 'giờ công': '勤務時間', 'work hours': '勤務時間', 'hours': '勤務時間', 'số giờ công': '勤務時間', 'số giờ làm': '勤務時間', 'work hour': '勤務時間',
+  'tăng ca': '残業', 'ot': '残業', 'overtime': '残業', 'số giờ tăng ca': '残業時間', 'overtime hours': '残業時間',
+  'nghỉ phép': '有給休暇', 'phép năm': '有給休暇', 'annual leave': '有給休暇', 'số ngày phép': '有給休暇日数', 'leave': '休暇',
+  'nghỉ ốm': '病欠', 'sick leave': '病欠', 'ốm': '病欠', 'medical leave': '病欠',
+  'nghỉ việc riêng': '私用休暇', 'personal leave': '私用休暇', 'riêng': '私用休暇', 'private': '私用休暇',
+  'nghỉ không lương': '無給休暇', 'unpaid leave': '無給休暇',
+  'nghỉ lễ': '祝日休暇', 'holiday': '祝日休暇',
+  'nghỉ bù': '振替休暇', 'compensatory leave': '振替休暇', 'comp off': '振替休暇',
+  'số ngày': '日数', 'days': '日数',
+  'tổng': '合計', 'total': '合計', 'sum': '合計',
+  'lý do': '理由', 'note': '備考', 'ghi chú': '備考', 'remarks': '備考', 'description': '説明',
+  'mô tả': '説明', 'desc': '説明', 'comment': 'コメント',
+  'duyệt': '承認', 'trạng thái': 'ステータス', 'status': 'ステータス', 'tình trạng': 'ステータス', 'state': 'ステータス',
+  'người duyệt': '承認者', 'approved by': '承認者', 'approver': '承認者',
+  'ngày tạo': '作成日', 'created': '作成日', 'created at': '作成日', 'create date': '作成日', 'date created': '作成日',
+  'công ty': '会社', 'company': '会社',
+  'loại': '種類', 'type': '種類', 'loại phép': '休暇種類', 'leave type': '休暇種類',
+  'số điện thoại': '電話番号', 'phone': '電話番号', 'phone number': '電話番号',
+  'email': 'メール', 'e-mail': 'メール',
+  'địa chỉ': '住所', 'address': '住所',
+  'bắt đầu': '開始', 'kết thúc': '終了',
+  'kỳ': '期', 'period': '期',
+  'bậc': '等級', 'level': '等級',
+  'lương': '給与', 'salary': '給与',
+  'lương cơ bản': '基本給', 'basic salary': '基本給',
+  'phụ cấp': '手当', 'allowance': '手当',
+  'thuế': '税金', 'tax': '税金',
+  'bhxh': '社会保険', 'insurance': '保険',
+  'tên quốc tịch': '国籍', 'nationality': '国籍',
+  'ngân hàng': '銀行', 'bank': '銀行',
+  'stk': '口座番号', 'account': '口座番号',
+  'ghi': '記入', 'nhập': '入力', 'input': '入力',
 };
+
+// Hậu tố tham chiếu công thức ở cuối tiêu đề: " (1)", " (2)", " (1+2) - (3)"...
+const HEADER_REF_SUFFIX = /\s*\([\d+\s]+\)(?:\s*-\s*\([\d+\s]+\))*$/;
+
+// Dịch theo từ khoá cho cột có cách viết không cố định (năm đổi theo kỳ, khoảng trắng/ngoặc lệch)
+const JA_KEYWORD_RULES = [
+  { test: k => k.startsWith('tồn'), ja: '繰越' },
+  { test: k => k.startsWith('tổng phép'), ja: '付与日数' },
+  { test: k => k.includes('đã sd'), ja: '取得日数' },
+  { test: k => k.startsWith('còn lại'), ja: '残日数' },
+];
+
+// Chuẩn hoá tiêu đề: NFC + gộp khoảng trắng + chữ thường để khớp ổn định
+function normHeader(s) {
+  return s.normalize('NFC').replace(/\s+/g, ' ').trim().toLowerCase();
+}
 
 function translateHeader(header) {
   if (LANG !== 'ja') return header;
-  const key = header.trim().toLowerCase();
-  const mapped = JA_HEADER_MAP[key];
-  if (mapped && mapped !== header) return header + ' (' + mapped + ')';
-  return header;
+  const raw = header.trim();
+  // Tách hậu tố công thức để chèn tiếng Nhật ngay cạnh phần tiếng Việt
+  const m = HEADER_REF_SUFFIX.exec(raw);
+  const suffix = m ? raw.slice(m.index) : '';
+  const base = (m ? raw.slice(0, m.index) : raw).trim();
+  const key = normHeader(base);
+  let ja = JA_HEADER_MAP[key];
+  if (!ja) {
+    const rule = JA_KEYWORD_RULES.find(r => r.test(key));
+    if (rule) ja = rule.ja;
+  }
+  if (ja && ja !== base) return base + ' (' + ja + ')' + suffix;
+  return raw;
 }
 
 let leaveTable = { columns: [], rows: [] };
