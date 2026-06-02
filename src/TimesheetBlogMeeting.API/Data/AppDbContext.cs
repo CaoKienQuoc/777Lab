@@ -11,6 +11,8 @@ public class AppDbContext : DbContext
     public DbSet<BlogPost> BlogPosts => Set<BlogPost>();
     public DbSet<TimesheetEntry> TimesheetEntries => Set<TimesheetEntry>();
     public DbSet<Meeting> Meetings => Set<Meeting>();
+    public DbSet<LeaveColumn> LeaveColumns => Set<LeaveColumn>();
+    public DbSet<LeaveRow> LeaveRows => Set<LeaveRow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -21,6 +23,8 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<BlogPost>().Property(b => b.Id).ValueGeneratedOnAdd();
         modelBuilder.Entity<TimesheetEntry>().Property(t => t.Id).ValueGeneratedOnAdd();
         modelBuilder.Entity<Meeting>().Property(m => m.Id).ValueGeneratedOnAdd();
+        modelBuilder.Entity<LeaveColumn>().Property(l => l.Id).ValueGeneratedOnAdd();
+        modelBuilder.Entity<LeaveRow>().Property(l => l.Id).ValueGeneratedOnAdd();
 
         // Username là duy nhất
         modelBuilder.Entity<User>()

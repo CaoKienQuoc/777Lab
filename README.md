@@ -1,10 +1,11 @@
 # Bản Tin Nội Bộ — Blog · Chấm công · Lịch họp
 
-Website nội bộ gồm **3 mục**, có phân quyền **Admin / Customer**:
+Website nội bộ gồm **4 mục**, có phân quyền **Admin / Customer**:
 
 1. **Blog** — người dùng đăng bài viết (tiêu đề, nội dung, hình ảnh). Danh sách hiển thị kiểu trang tin tức, mỗi bài ngăn cách bởi một đường gạch.
 2. **Chấm công** — ai cũng xem được bảng chấm công và tải về Excel. Riêng **admin** có thể **import file Excel** hoặc **nhập trực tiếp**, sửa, xoá.
-3. **Lịch họp** — người dùng tự đăng ký họp: chọn ngày trên **lịch dương**, rồi chọn **khung giờ** trống trong ngày. Hệ thống tự kiểm tra **trùng giờ**.
+3. **Phép tồn** — bảng tổng hợp phép năm / ngày nghỉ / phép còn lại của nhân viên, với **cột động**: bộ cột được dựng theo đúng dòng tiêu đề của **file Excel import** (file có cột gì thì bảng có cột đó). Ai cũng xem được và tải Excel; **admin** có thể **import/export Excel**, nhập trực tiếp, sửa, xoá.
+4. **Lịch họp** — người dùng tự đăng ký họp: chọn ngày trên **lịch dương**, rồi chọn **khung giờ** trống trong ngày. Hệ thống tự kiểm tra **trùng giờ**.
 
 Công nghệ: **C# / ASP.NET Core 8 Web API**, **SQL Server** (Entity Framework Core), frontend **HTML/CSS/JavaScript thuần** (do API phục vụ luôn, không cần chạy server riêng).
 
@@ -101,7 +102,19 @@ Tài khoản **admin cố định** (đã được tạo sẵn trong database):
 
 Bắt buộc tối thiểu phải có cột **Họ tên** và **Ngày**. Tải “file mẫu” để chắc chắn đúng định dạng.
 
-### Mục 3 — Lịch họp
+### Mục 3 — Phép tồn  (cột động theo file)
+- **Customer:** xem bảng và bấm **“Xuất Excel”** để tải về.
+- **Admin:** **“Import Excel”**, **“+ Thêm dòng”** (nhập trực tiếp), **“Tải file mẫu”**, sửa / xoá từng dòng.
+
+**Bộ cột KHÔNG cố định** — được dựng theo đúng **dòng tiêu đề của file import**: file có cột nào thì bảng (và file mẫu, file xuất) hiển thị đúng cột đó, theo đúng thứ tự. Ví dụ import bảng “777LAB” trong file gốc sẽ ra các cột: *STT · Code · Tên · Team · Tồn 2025 · Tổng phép đến 6/2026 · Nghỉ phép không lương · Ngày nghỉ (đã sd) · Còn lại*.
+
+Cách import nhận diện bảng:
+- Tự **quét mọi sheet**, chọn dòng tiêu đề tốt nhất (khối cột chữ liền nhau, ưu tiên dòng chứa từ khoá *phép / nghỉ / tồn / còn lại / team*).
+- Lấy **khối cột liền nhau** từ tiêu đề, **dừng ở ô tiêu đề trống** đầu tiên (bỏ phần lịch/cột thừa bên phải).
+- Đọc dữ liệu đến **dòng trống đầu tiên** thì dừng (bỏ phần ghi chú bên dưới như “Các chế độ nghỉ phép”).
+- Cột nào toàn số sẽ được căn phải; số âm tô đỏ. **Import thay thế toàn bộ bảng** theo file mới.
+
+### Mục 4 — Lịch họp
 - Chọn một **ngày** trên lịch (số đỏ là số cuộc họp đã có trong ngày).
 - Trong bảng bên phải, bấm chọn **khung giờ bắt đầu** rồi **khung giờ kết thúc** (mỗi ô 30 phút, từ 08:00 đến 18:00). Ô gạch ngang là giờ đã bị đặt.
 - Nhập tiêu đề (và mô tả nếu cần) rồi bấm **“Đặt lịch họp”**.
@@ -122,15 +135,15 @@ TimesheetBlogMeeting/
    └─ TimesheetBlogMeeting.API/
       ├─ Program.cs          # Cấu hình DB, JWT, CORS, Swagger, phục vụ frontend
       ├─ appsettings.json    # Chuỗi kết nối + cấu hình JWT
-      ├─ Controllers/        # Auth, Users, Blog, Timesheet, Meeting
-      ├─ Models/             # User, BlogPost, TimesheetEntry, Meeting
+      ├─ Controllers/        # Auth, Users, Blog, Timesheet, Leave, Meeting
+      ├─ Models/             # User, BlogPost, TimesheetEntry, LeaveColumn/LeaveRow, Meeting
       ├─ DTOs/               # Các lớp request/response
       ├─ Data/               # AppDbContext + DbSeeder (tạo admin)
       ├─ Services/           # TokenService (sinh JWT)
       └─ wwwroot/            # FRONTEND
          ├─ login.html, index.html
          ├─ css/style.css
-         ├─ js/              # api, login, app, blog, timesheet, meeting, users
+         ├─ js/              # api, login, app, blog, timesheet, leave, meeting, users
          └─ uploads/         # ảnh bài blog
 ```
 
@@ -145,6 +158,8 @@ TimesheetBlogMeeting/
 | Blog | `GET/POST/PUT/DELETE /api/blog` | Đăng nhập (chủ bài hoặc admin mới sửa/xoá) |
 | Chấm công | `GET /api/timesheet`, `/export`, `/template` | Đăng nhập |
 | | `POST/PUT/DELETE /api/timesheet`, `/import`, `/clear` | Admin |
+| Phép tồn | `GET /api/leave`, `/export`, `/template` | Đăng nhập |
+| | `POST/PUT/DELETE /api/leave/rows/{id}`, `/import`, `/clear` | Admin |
 | Lịch họp | `GET/POST/PUT/DELETE /api/meeting` | Đăng nhập (người tạo hoặc admin mới sửa/xoá) |
 
 Mọi request (trừ login) cần header `Authorization: Bearer {token}`. Frontend tự xử lý việc này sau khi đăng nhập.

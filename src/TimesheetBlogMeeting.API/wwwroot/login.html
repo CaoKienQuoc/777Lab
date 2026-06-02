@@ -31,9 +31,13 @@
         </button>
       </form>
 
-      <div class="login-divider" id="login-divider"><span>hoặc</span></div>
+      <p class="login-alt">Chưa có tài khoản? <a href="/register.html">Đăng ký</a></p>
 
+      <!-- TẠM ẨN đăng nhập Google (chưa có domain + HTTPS nên Google chặn origin).
+           Bật lại: bỏ comment khối này và thẻ script GSI ở cuối trang.
+      <div class="login-divider" id="login-divider"><span>hoặc</span></div>
       <div id="google-btn" class="google-btn-wrap"></div>
+      -->
     </div>
   </div>
 
@@ -41,6 +45,9 @@
 
   <script src="/js/api.js"></script>
   <script src="/js/login.js"></script>
+  <!-- TẠM ẨN đăng nhập Google — bật lại bằng cách bỏ comment dòng dưới:
   <script src="https://accounts.google.com/gsi/client" onload="onGoogleLoad()" async defer></script>
+  -->
+
 </body>
 </html>

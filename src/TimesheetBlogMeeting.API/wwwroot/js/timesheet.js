@@ -1,25 +1,33 @@
+let timesheetRows = [];
+let timesheetFilter = '';
+
 function initTimesheet() {
   const actions = document.getElementById('timesheet-actions');
-  const sub = document.getElementById('timesheet-sub');
 
   if (isAdmin()) {
-    sub.textContent = 'Bạn là quản trị viên — có thể import Excel hoặc nhập trực tiếp.';
     actions.innerHTML = `
       <input type="file" id="ts-import-file" accept=".xlsx,.xls" class="hidden" />
-      <button class="btn btn-primary" id="ts-add">+ Thêm dòng</button>
-      <button class="btn btn-dark" id="ts-import">⬆ Import Excel</button>
-      <button class="btn" id="ts-template">📄 Tải file mẫu</button>
-      <button class="btn" id="ts-export">⬇ Xuất Excel</button>`;
+      <button class="btn btn-primary" id="ts-add">${t('addRow')}</button>
+      <button class="btn btn-dark" id="ts-import">${t('importExcel')}</button>
+      <button class="btn" id="ts-export">${t('exportExcel')}</button>`;
 
     document.getElementById('ts-add').addEventListener('click', () => openTimesheetForm(null));
     document.getElementById('ts-export').addEventListener('click', exportTimesheet);
-    document.getElementById('ts-template').addEventListener('click', downloadTemplate);
     document.getElementById('ts-import').addEventListener('click', () =>
       document.getElementById('ts-import-file').click());
     document.getElementById('ts-import-file').addEventListener('change', importTimesheet);
   } else {
-    actions.innerHTML = `<button class="btn" id="ts-export">⬇ Xuất Excel</button>`;
+    actions.innerHTML = `<button class="btn" id="ts-export">${t('exportExcelSm')}</button>`;
     document.getElementById('ts-export').addEventListener('click', exportTimesheet);
+  }
+
+  const searchInput = document.getElementById('ts-search-input');
+  if (searchInput) {
+    searchInput.placeholder = t('tsSearchPlaceholder');
+    searchInput.addEventListener('input', (e) => {
+      timesheetFilter = e.target.value.trim().toLowerCase();
+      renderTimesheet(timesheetRows);
+    });
   }
 }
 
@@ -27,8 +35,8 @@ async function loadTimesheet() {
   const box = document.getElementById('timesheet-container');
   box.innerHTML = '<div class="spinner"></div>';
   try {
-    const rows = await api('/api/timesheet');
-    renderTimesheet(rows);
+    timesheetRows = await api('/api/timesheet');
+    renderTimesheet(timesheetRows);
   } catch (err) {
     box.innerHTML = '';
     showToast(err.message, 'err');
@@ -36,8 +44,25 @@ async function loadTimesheet() {
 }
 
 function renderTimesheet(rows) {
-  const box = document.getElementById('timesheet-container');
   const admin = isAdmin();
+  const allRows = rows || [];
+  const filteredRows = timesheetFilter
+    ? allRows.filter(r => 
+        (r.employeeName && r.employeeName.toLowerCase().includes(timesheetFilter)) ||
+        (r.note && r.note.toLowerCase().includes(timesheetFilter)))
+    : allRows;
+
+  if (filteredRows.length === 0 && rows && rows.length > 0) {
+    const box = document.getElementById('timesheet-container');
+    box.innerHTML = `
+      <div class="card"><div class="empty">
+        <span class="ico">🗓️</span>
+        <p><b>Không có dữ liệu phù hợp.</b></p>
+      </div></div>`;
+    return;
+  }
+
+  const box = document.getElementById('timesheet-container');
 
   if (!rows || rows.length === 0) {
     box.innerHTML = `
@@ -49,7 +74,7 @@ function renderTimesheet(rows) {
     return;
   }
 
-  const body = rows.map((r, i) => `
+  const body = filteredRows.map((r, i) => `
     <tr>
       <td class="num">${i + 1}</td>
       <td>${escapeHtml(r.employeeName)}</td>
@@ -78,7 +103,7 @@ function renderTimesheet(rows) {
 
   if (admin) {
     box.querySelectorAll('[data-edit]').forEach(b =>
-      b.addEventListener('click', () => openTimesheetForm(b.dataset.edit, rows)));
+      b.addEventListener('click', () => openTimesheetForm(b.dataset.edit, timesheetRows)));
     box.querySelectorAll('[data-del]').forEach(b =>
       b.addEventListener('click', () => deleteTimesheet(b.dataset.del)));
   }

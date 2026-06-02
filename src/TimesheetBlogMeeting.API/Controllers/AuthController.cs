@@ -45,6 +45,42 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// Đăng ký tài khoản mới (luôn là Customer). Đăng ký thành công thì tự đăng nhập luôn
+    /// (trả về JWT token như khi login).
+    /// </summary>
+    [HttpPost("register")]
+    public async Task<ActionResult<AuthResponse>> Register(RegisterRequest request)
+    {
+        var username = request.Username.Trim();
+        var fullName = request.FullName.Trim();
+
+        if (string.IsNullOrWhiteSpace(fullName))
+            return BadRequest(new { message = "Vui lòng nhập họ và tên." });
+        if (username.Length < 3)
+            return BadRequest(new { message = "Tên đăng nhập phải có ít nhất 3 ký tự." });
+        if (request.Password.Length < 6)
+            return BadRequest(new { message = "Mật khẩu phải có ít nhất 6 ký tự." });
+
+        if (await _db.Users.AnyAsync(u => u.Username == username))
+            return Conflict(new { message = "Tên đăng nhập đã tồn tại, vui lòng chọn tên khác." });
+
+        var user = new User
+        {
+            Username = username,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+            FullName = fullName,
+            AuthProvider = "Local",
+            Role = "Customer",
+            CreatedAt = TimeHelper.VnNow
+        };
+
+        _db.Users.Add(user);
+        await _db.SaveChangesAsync();
+
+        return Ok(BuildResponse(user));
+    }
+
+    /// <summary>
     /// Đăng nhập bằng Google. Client gửi lên ID token (credential) do Google Identity Services trả về.
     /// Lần đầu đăng nhập sẽ tự tạo tài khoản Customer.
     /// </summary>

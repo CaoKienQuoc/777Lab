@@ -102,6 +102,32 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.EnsureCreated();   // Tạo DB + bảng theo model nếu chưa tồn tại
+
+    // EnsureCreated() KHÔNG thêm bảng mới vào database đã tồn tại từ trước.
+    // Bảng "Phép tồn" dùng cột ĐỘNG: 1 bảng định nghĩa cột + 1 bảng dữ liệu dòng (JSON).
+    // Đồng thời bỏ bảng LeaveBalances cũ (thiết kế cột cố định) nếu còn tồn tại.
+    db.Database.ExecuteSqlRaw(@"
+IF OBJECT_ID(N'[LeaveBalances]', N'U') IS NOT NULL DROP TABLE [LeaveBalances];
+IF OBJECT_ID(N'[LeaveColumns]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [LeaveColumns] (
+        [Id] uniqueidentifier NOT NULL,
+        [Position] int NOT NULL,
+        [Header] nvarchar(200) NOT NULL,
+        [IsNumeric] bit NOT NULL,
+        CONSTRAINT [PK_LeaveColumns] PRIMARY KEY ([Id])
+    );
+END
+IF OBJECT_ID(N'[LeaveRows]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [LeaveRows] (
+        [Id] uniqueidentifier NOT NULL,
+        [Position] int NOT NULL,
+        [CellsJson] nvarchar(max) NOT NULL,
+        CONSTRAINT [PK_LeaveRows] PRIMARY KEY ([Id])
+    );
+END");
+
     DbSeeder.Seed(db);             // Tạo tài khoản admin cố định
 }
 

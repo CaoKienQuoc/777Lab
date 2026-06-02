@@ -8,6 +8,24 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/style.css" />
+  <style>
+.leave-search-wrapper {
+  display: flex; align-items: center;
+}
+.leave-search-input, .ts-search-input {
+  padding: 6px 10px; border: 1px solid var(--line-strong);
+  border-radius: 4px; font-size: 13px; width: 180px;
+  background: var(--surface); color: var(--ink);
+}
+.leave-search-input::placeholder, .ts-search-input::placeholder {
+  color: var(--muted-text);
+}
+.lang-flag {
+  width: 28px; height: 20px; cursor: pointer; margin-left: 12px; border-radius: 3px;
+  border: 1px solid var(--line); transition: all .15s;
+}
+.lang-flag:hover { border-color: var(--accent); transform: scale(1.05); }
+</style>
 </head>
 <body>
   <!-- ===== Header ===== -->
@@ -15,13 +33,20 @@
     <div class="app-header-inner">
       <div class="app-logo">
         <span class="mark">777<em>LAB</em></span>
-        <span class="sub">Workspace</span>
+      </div>
+      <div class="app-mascots" aria-hidden="true">
+        <img src="/img/chars-sm/Char%201.2.png" alt="" />
+        <img src="/img/chars-sm/Char%202.4.png" alt="" />
+        <img src="/img/chars-sm/Char%203.1_pink.png" alt="" />
+        <img src="/img/chars-sm/Char%204.2.png" alt="" />
+        <img src="/img/chars-sm/Char%205.1.1.png" alt="" />
       </div>
       <div class="app-user">
         <div class="who">
           <b id="user-fullname">—</b><br />
           <span id="user-role-tag" class="role-tag role-customer">Customer</span>
         </div>
+        <img id="lang-flag" class="lang-flag" src="https://flagcdn.com/vn.svg" alt="VI" title="Chuyển sang Nhật" />
         <button class="logout-btn" id="logout-btn">Đăng xuất</button>
       </div>
     </div>
@@ -29,12 +54,13 @@
 
   <!-- ===== Tabs ===== -->
   <nav class="tabbar">
-    <div class="tabbar-inner">
-      <button class="tab active" data-view="blog"><span class="ico">📰</span> Blog</button>
-      <button class="tab" data-view="timesheet"><span class="ico">🗓️</span> Chấm công</button>
-      <button class="tab" data-view="meeting"><span class="ico">📅</span> Lịch họp</button>
-      <button class="tab hidden" data-view="users" id="tab-users"><span class="ico">👥</span> Người dùng</button>
-    </div>
+      <div class="tabbar-inner">
+          <button class="tab active" data-view="blog"><span class="ico"><img src="/img/chars-sm/Char 1.2.png" width="20" height="20"></span> Blog</button>
+          <button class="tab" data-view="leave"><span class="ico"><img src="/img/chars-sm/Char 3.1_pink.png" width="20" height="20"></span> Phép tồn</button>
+          <button class="tab" data-view="timesheet"><span class="ico"><img src="/img/chars-sm/Char 2.4.png" width="20" height="20"></span> Chấm công</button>
+          <button class="tab" data-view="meeting"><span class="ico"><img src="/img/chars-sm/Char 2.1.png" width="20" height="20"></span> Lịch họp</button>
+          <button class="tab hidden" data-view="users" id="tab-users"><span class="ico">👥</span> Người dùng</button>
+      </div>
   </nav>
 
   <main class="container">
@@ -60,9 +86,29 @@
           <h2>Bảng chấm công</h2>
           <p id="timesheet-sub" class="view-sub"></p>
         </div>
+        <div class="ts-search-wrapper" id="ts-search-container">
+          <input type="text" id="ts-search-input" placeholder="Tìm kiếm tên..." class="ts-search-input" />
+        </div>
         <div class="view-actions" id="timesheet-actions"></div>
       </div>
       <div id="timesheet-container">
+        <div class="spinner"></div>
+      </div>
+    </section>
+
+    <!-- ===== View: Leave balance (Phép tồn) ===== -->
+    <section class="view" id="view-leave">
+      <div class="view-head">
+        <div class="titles">
+          <h2>Phép tồn</h2>
+          <p id="leave-sub" class="view-sub"></p>
+        </div>
+        <div class="leave-search-wrapper" id="leave-search-container">
+          <input type="text" id="leave-search-input" placeholder="Tìm kiếm tên/code..." class="leave-search-input" />
+        </div>
+        <div class="view-actions" id="leave-actions"></div>
+      </div>
+      <div id="leave-container">
         <div class="spinner"></div>
       </div>
     </section>
@@ -83,9 +129,7 @@
     <section class="view" id="view-users">
       <div class="view-head">
         <div class="titles">
-          <div class="kicker">Quản trị</div>
           <h2>Quản lý người dùng</h2>
-          <p>Thêm, sửa, xoá tài khoản và phân quyền.</p>
         </div>
         <div class="view-actions">
           <button class="btn btn-primary" id="btn-new-user">+ Thêm người dùng</button>
@@ -115,6 +159,7 @@
   <script src="/js/app.js"></script>
   <script src="/js/blog.js"></script>
   <script src="/js/timesheet.js"></script>
+  <script src="/js/leave.js"></script>
   <script src="/js/meeting.js"></script>
   <script src="/js/users.js"></script>
 </body>

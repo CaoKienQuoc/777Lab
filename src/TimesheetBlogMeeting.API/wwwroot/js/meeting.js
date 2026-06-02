@@ -65,14 +65,27 @@ function renderCalendar() {
   for (let day = 1; day <= daysInMonth; day++) {
     const date = new Date(_calYear, _calMonth, day);
     const ymd = toYMD(date);
-    const cnt = meetingsOn(ymd).length;
+    const dayMtgs = meetingsOn(ymd).slice()
+      .sort((a, b) => a.startTime.localeCompare(b.startTime));
     const cls = ['cal-cell'];
     if (ymd === todayYMD) cls.push('today');
     if (ymd < todayYMD) cls.push('past');
     if (ymd === _selDate) cls.push('selected');
-    const badge = cnt ? `<span class="cal-badge">${cnt}</span>` : '';
+
+    // Hiển thị giờ bắt đầu + tiêu đề từng cuộc họp ngay trên ô ngày
+    // (tối đa 3 cuộc, dư thì gộp thành "+N nữa")
+    const MAX_SHOW = 3;
+    let eventsHtml = dayMtgs.slice(0, MAX_SHOW).map(m =>
+      `<div class="cal-event" title="${escapeHtml(m.startTime)}–${escapeHtml(m.endTime)} ${escapeHtml(m.title)}">
+         <span class="cal-event-time">${escapeHtml(m.startTime)}</span> ${escapeHtml(m.title)}
+       </div>`).join('');
+    if (dayMtgs.length > MAX_SHOW) {
+      eventsHtml += `<div class="cal-more">+${dayMtgs.length - MAX_SHOW} nữa</div>`;
+    }
+
     cells += `<div class="${cls.join(' ')}" data-ymd="${ymd}">
-                <span class="cal-num">${day}</span>${badge}
+                <span class="cal-num">${day}</span>
+                <div class="cal-events">${eventsHtml}</div>
               </div>`;
   }
 
@@ -134,12 +147,12 @@ function renderBookPanel() {
       <div class="field time-range-row">
         <div class="time-field">
           <label for="mtg-start">Giờ bắt đầu</label>
-          <input type="time" id="mtg-start" min="08:00" max="17:30" step="1800" value="08:00" />
+          <select id="mtg-start">${timeOptions(SLOT_START_MIN, SLOT_END_MIN - SLOT_STEP, 8 * 60)}</select>
         </div>
         <span class="time-sep">–</span>
         <div class="time-field">
           <label for="mtg-end">Giờ kết thúc</label>
-          <input type="time" id="mtg-end" min="08:30" max="18:00" step="1800" value="09:00" />
+          <select id="mtg-end">${timeOptions(SLOT_START_MIN + SLOT_STEP, SLOT_END_MIN, 9 * 60)}</select>
         </div>
       </div>
       <div class="field">
@@ -199,6 +212,16 @@ function minToHHMM(m) {
 function hhmmToMin(s) {
   const [h, m] = s.split(':').map(Number);
   return h * 60 + m;
+}
+
+/* Sinh các <option> mốc giờ 30 phút theo định dạng 24h (HH:MM) */
+function timeOptions(fromMin, toMin, selectedMin) {
+  let html = '';
+  for (let m = fromMin; m <= toMin; m += SLOT_STEP) {
+    const label = minToHHMM(m);
+    html += `<option value="${label}"${m === selectedMin ? ' selected' : ''}>${label}</option>`;
+  }
+  return html;
 }
 
 function isSlotBusy(i, dayMeetings) {
