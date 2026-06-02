@@ -33,6 +33,10 @@
           <label for="password" data-i18n="password">Mật khẩu</label>
           <input type="password" id="password" name="password" autocomplete="current-password" data-i18n-placeholder="passwordPlaceholder" required />
         </div>
+        <label style="display:flex; align-items:center; gap:8px; margin-bottom:16px; font-size:14px;">
+          <input type="checkbox" id="remember-me" style="width:auto;" />
+          <span data-i18n="rememberMe">Ghi nhớ đăng nhập</span>
+        </label>
         <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;" id="login-btn" data-i18n="loginBtn">
           Đăng nhập
         </button>
@@ -63,12 +67,14 @@
           internalSystem: 'Hệ thống nội bộ', username: 'Tên đăng nhập', password: 'Mật khẩu',
           usernamePlaceholder: 'Nhập tên đăng nhập', passwordPlaceholder: 'Nhập mật khẩu',
           loginBtn: 'Đăng nhập', noAccount: 'Chưa có tài khoản?', register: 'Đăng ký',
+          rememberMe: 'Ghi nhớ đăng nhập',
           vi: 'Tiếng Việt', ja: 'Tiếng Nhật'
         },
         ja: {
           internalSystem: '社内システム', username: 'ユーザー名', password: 'パスワード',
           usernamePlaceholder: 'ユーザー名を入力', passwordPlaceholder: 'パスワードを入力',
           loginBtn: 'ログイン', noAccount: 'アカウントをお持ちでないですか？', register: '新規登録',
+          rememberMe: 'ログインを記憶する',
           vi: 'ベトナム語', ja: '日本語'
         }
       };

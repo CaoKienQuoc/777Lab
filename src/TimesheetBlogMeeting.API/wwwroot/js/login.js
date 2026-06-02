@@ -10,6 +10,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
   const btn = document.getElementById('login-btn');
   const username = document.getElementById('username').value.trim();
   const password = document.getElementById('password').value;
+  const remember = document.getElementById('remember-me').checked;
 
   if (!username || !password) {
     showToast('Vui lòng nhập đầy đủ thông tin.', 'err');
@@ -23,7 +24,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
       method: 'POST',
       body: { username, password }
     });
-    saveAuth(auth);
+    saveAuth(auth, remember);
     window.location.href = '/index.html';
   } catch (err) {
     showToast(err.message || 'Đăng nhập thất bại.', 'err');

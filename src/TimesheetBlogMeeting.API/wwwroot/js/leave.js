@@ -2,6 +2,38 @@
    leave.js — Phép tồn với cột động
    ========================================================================= */
 
+const JA_HEADER_MAP = {
+  'họ tên': '名前', 'họ và tên': '名前', 'tên': '名前', 'name': '名前',
+  'mã nhân viên': '社員番号', 'mã': '社員番号', 'id': '社員番号',
+  'phòng ban': '部署', 'bộ phận': '部署', 'department': '部署',
+  'chức vụ': '職位', 'vị trí': '職位', 'position': '職位',
+  'ngày': '日付', 'ngày làm việc': '就業日', 'ngày công': '就業日', 'date': '日付',
+  'giờ vào': '出勤時間', 'check in': '出勤時間', 'checkin': '出勤時間', 'time in': '出勤時間',
+  'giờ ra': '退勤時間', 'check out': '退勤時間', 'checkout': '退勤時間', 'time out': '退勤時間',
+  'số giờ': '勤務時間', 'giờ công': '勤務時間', 'work hours': '勤務時間', 'hours': '勤務時間',
+  'tăng ca': '残業', 'ot': '残業', 'overtime': '残業',
+  'nghỉ phép': '有給休暇', 'phép năm': '有給休暇', 'annual leave': '有給休暇',
+  'nghỉ ốm': '病欠', 'sick leave': '病欠',
+  'nghỉ việc riêng': '私用休暇', 'personal leave': '私用休暇',
+  'lý do': '理由', 'note': '備考', 'ghi chú': '備考', 'remarks': '備考', 'description': '説明',
+  'duyệt': '承認', 'trạng thái': 'ステータス', 'status': 'ステータス',
+  'người duyệt': '承認者', 'approved by': '承認者',
+  'ngày tạo': '作成日', 'created': '作成日', 'created at': '作成日',
+  'công ty': '会社', 'company': '会社',
+  'loại': '種類', 'type': '種類',
+  'từ ngày': '開始日', 'đến ngày': '終了日',
+  'số ngày': '日数', 'days': '日数',
+  'tổng': '合計', 'total': '合計',
+  'tháng': '月', 'month': '月',
+  'năm': '年', 'year': '年',
+};
+
+function translateHeader(header) {
+  if (LANG !== 'ja') return header;
+  const key = header.trim().toLowerCase();
+  return JA_HEADER_MAP[key] || header;
+}
+
 let leaveTable = { columns: [], rows: [] };
 let leaveFilter = '';
 
@@ -86,7 +118,7 @@ function renderLeave(table) {
       })
     : allRows;
 
-  const thead = cols.map(c => `<th class="${c.isNumeric ? 'num' : ''}">${escapeHtml(c.header)}</th>`).join('')
+  const thead = cols.map(c => `<th class="${c.isNumeric ? 'num' : ''}">${escapeHtml(translateHeader(c.header))}</th>`).join('')
     + (admin ? '<th class="num">' + t('action') + '</th>' : '');
 
   const tbody = filteredRows.map(r => {
@@ -129,7 +161,7 @@ function openLeaveForm(id) {
       const type = c.isNumeric ? 'number' : 'text';
       const step = c.isNumeric ? ' step="0.5"' : '';
       return `<div class="field">
-        <label for="lvc_${c.position}">${escapeHtml(c.header)}</label>
+        <label for="lvc_${c.position}">${escapeHtml(translateHeader(c.header))}</label>
         <input type="${type}"${step} id="lvc_${c.position}" value="${escapeHtml(v)}" />
       </div>`;
     }).join('');

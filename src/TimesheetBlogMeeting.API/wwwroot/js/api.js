@@ -5,17 +5,21 @@
 
 const API_BASE = ''; // cùng origin (API phục vụ luôn cả wwwroot)
 
-/* ---------- Lưu / đọc token & thông tin user trong localStorage ---------- */
+/* ---------- Lưu / đọc token & thông tin user ----------
+   - remember=true  → localStorage (persist across sessions)
+   - remember=false → sessionStorage (cleared when browser closes)
+*/
 function getToken() {
-  return localStorage.getItem('token');
+  return localStorage.getItem('token') || sessionStorage.getItem('token');
 }
 function getUser() {
-  const raw = localStorage.getItem('user');
+  const raw = localStorage.getItem('user') || sessionStorage.getItem('user');
   return raw ? JSON.parse(raw) : null;
 }
-function saveAuth(auth) {
-  localStorage.setItem('token', auth.token);
-  localStorage.setItem('user', JSON.stringify({
+function saveAuth(auth, remember) {
+  const storage = remember ? localStorage : sessionStorage;
+  storage.setItem('token', auth.token);
+  storage.setItem('user', JSON.stringify({
     userId: auth.userId,
     username: auth.username,
     fullName: auth.fullName,
@@ -25,6 +29,8 @@ function saveAuth(auth) {
 function logout() {
   localStorage.removeItem('token');
   localStorage.removeItem('user');
+  sessionStorage.removeItem('token');
+  sessionStorage.removeItem('user');
   window.location.href = '/login.html';
 }
 function isAdmin() {
