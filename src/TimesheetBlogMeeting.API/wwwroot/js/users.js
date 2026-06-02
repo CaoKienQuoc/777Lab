@@ -53,7 +53,7 @@ function renderUsers(users) {
     <div class="card"><div class="table-wrap">
       <table class="data">
         <thead><tr>
-          <th class="num">#</th><th>Tên đăng nhập</th><th>Họ và tên</th>
+          <th class="num">STT</th><th>Tên đăng nhập</th><th>Họ và tên</th>
           <th>Vai trò</th><th>Ngày tạo</th><th class="num">Thao tác</th>
         </tr></thead>
         <tbody>${rows}</tbody>
