@@ -1,10 +1,6 @@
 /* =========================================================================
-    leave.js — Mục "Phép tồn" với CỘT ĐỘNG.
-    Bộ cột không cố định: được dựng theo đúng dòng tiêu đề của file Excel khi import.
-    Bảng hiển thị, form thêm/sửa, xuất Excel và file mẫu đều bám theo bộ cột đó.
-    - Mọi người dùng: xem + xuất Excel + lọc.
-    - Admin: thêm / sửa / xoá dòng / import Excel / tải file mẫu.
-    ========================================================================= */
+   leave.js — Phép tồn với cột động
+   ========================================================================= */
 
 let leaveTable = { columns: [], rows: [] };
 let leaveFilter = '';
@@ -51,7 +47,6 @@ async function loadLeave() {
   }
 }
 
-// Hiển thị giá trị 1 ô. Cột số: căn phải, bỏ ".0" thừa, số âm tô đỏ.
 function fmtCell(val, isNumeric) {
   if (val === null || val === undefined || val === '') return '';
   if (isNumeric) {
@@ -75,10 +70,10 @@ function renderLeave(table) {
     box.innerHTML = `
       <div class="card"><div class="empty">
         <span class="ico"><img src="/img/chars-sm/Char 4.2.png" width="20" height="20"></span>
-        <p><b>Chưa có bảng phép tồn.</b></p>
+        <p><b>${t('noLeave')}</b></p>
         <p>${admin
-          ? 'Hãy bấm <b>Import Excel</b> — bảng sẽ được dựng theo đúng các cột trong file của bạn.'
-          : 'Vui lòng quay lại sau.'}</p>
+          ? t('leaveAdminHint')
+          : t('leaveUserHint')}</p>
       </div></div>`;
     return;
   }
@@ -86,19 +81,19 @@ function renderLeave(table) {
   const filteredRows = leaveFilter
     ? allRows.filter(r => {
         const cells = r.cells || {};
-        return Object.values(cells).some(v => 
+        return Object.values(cells).some(v =>
           v && String(v).toLowerCase().includes(leaveFilter));
       })
     : allRows;
 
   const thead = cols.map(c => `<th class="${c.isNumeric ? 'num' : ''}">${escapeHtml(c.header)}</th>`).join('')
-    + (admin ? '<th class="num">Thao tác</th>' : '');
+    + (admin ? '<th class="num">' + t('action') + '</th>' : '');
 
   const tbody = filteredRows.map(r => {
     const tds = cols.map(c => `<td class="${c.isNumeric ? 'num' : ''}">${fmtCell(r.cells[c.position], c.isNumeric)}</td>`).join('');
     const act = admin ? `<td class="num"><div class="row-actions">
-        <button class="btn btn-ghost btn-sm" data-edit="${r.id}" title="Sửa">✎</button>
-        <button class="btn btn-danger btn-sm" data-del="${r.id}" title="Xoá">🗑</button>
+        <button class="btn btn-ghost btn-sm" data-edit="${r.id}" title="${t('editPost')}">✎</button>
+        <button class="btn btn-danger btn-sm" data-del="${r.id}" title="${t('deletePost')}">🗑</button>
       </div></td>` : '';
     return `<tr>${tds}${act}</tr>`;
   }).join('');
@@ -107,7 +102,7 @@ function renderLeave(table) {
     <div class="card"><div class="table-wrap">
       <table class="data">
         <thead><tr>${thead}</tr></thead>
-        <tbody>${tbody || '<tr><td colspan="' + (cols.length + (admin ? 1 : 0)) + '" class="empty">Không có dữ liệu phù hợp.</td></tr>'}</tbody>
+        <tbody>${tbody || '<tr><td colspan="' + (cols.length + (admin ? 1 : 0)) + '" class="empty">' + t('noTimesheetMatch') + '</td></tr>'}</tbody>
       </table>
     </div></div>`;
 
@@ -119,7 +114,6 @@ function renderLeave(table) {
   }
 }
 
-/* ---------- Thêm / sửa (chỉ admin) — form dựng theo cột động ---------- */
 function openLeaveForm(id) {
   const cols = leaveTable.columns || [];
   if (cols.length === 0) {
@@ -142,11 +136,12 @@ function openLeaveForm(id) {
     fields += `<div class="field-row">${group}</div>`;
   }
 
+  const isEdit = !!id;
   const foot = `
-    <button class="btn" onclick="closeModal()">Huỷ</button>
-    <button class="btn btn-primary" id="lv-save">${id ? 'Lưu' : 'Thêm'}</button>`;
+    <button class="btn" onclick="closeModal()">${t('cancel')}</button>
+    <button class="btn btn-primary" id="lv-save">${isEdit ? t('save') : t('addRow')}</button>`;
 
-  openModal(id ? 'Sửa dòng phép tồn' : 'Thêm dòng phép tồn', fields, foot, true);
+  openModal(isEdit ? t('editLeaveTitle') : t('addLeaveTitle'), fields, foot, true);
   document.getElementById('lv-save').addEventListener('click', () => saveLeave(id));
 }
 
@@ -160,40 +155,40 @@ async function saveLeave(id) {
     cells[c.position] = v;
     if (v !== '') anyVal = true;
   });
-  if (!anyVal) { showToast('Vui lòng nhập ít nhất một ô.', 'err'); return; }
+  if (!anyVal) { showToast(t('pleaseEnterOneCell'), 'err'); return; }
 
   const btn = document.getElementById('lv-save');
-  btn.disabled = true; btn.textContent = 'Đang lưu...';
+  const isEdit = !!id;
+  btn.disabled = true; btn.textContent = t('saving');
   try {
     await api('/api/leave/rows' + (id ? '/' + id : ''), {
       method: id ? 'PUT' : 'POST',
       body: { cells }
     });
     closeModal();
-    showToast(id ? 'Đã cập nhật.' : 'Đã thêm dòng.', 'ok');
+    showToast(isEdit ? t('leaveSaved') : t('leaveAdded'), 'ok');
     loadLeave();
   } catch (err) {
     showToast(err.message, 'err');
-    btn.disabled = false; btn.textContent = id ? 'Lưu' : 'Thêm';
+    btn.disabled = false; btn.textContent = isEdit ? t('save') : t('addRow');
   }
 }
 
 function deleteLeave(id) {
-  openModal('Xoá dòng',
-    '<p>Xoá dòng phép tồn này?</p>',
-    `<button class="btn" onclick="closeModal()">Huỷ</button>
-     <button class="btn btn-primary" id="confirm-del-lv">Xoá</button>`);
+  openModal(t('deleteRow'),
+    '<p>' + t('deleteLeaveConfirm') + '</p>',
+    `<button class="btn" onclick="closeModal()">${t('cancel')}</button>
+     <button class="btn btn-primary" id="confirm-del-lv">${t('deletePost')}</button>`);
   document.getElementById('confirm-del-lv').addEventListener('click', async () => {
     try {
       await api('/api/leave/rows/' + id, { method: 'DELETE' });
       closeModal();
-      showToast('Đã xoá.', 'ok');
+      showToast(t('leaveDeleted'), 'ok');
       loadLeave();
     } catch (err) { showToast(err.message, 'err'); }
   });
 }
 
-/* ---------- Xuất / import ---------- */
 async function exportLeave() {
   try {
     const blob = await api('/api/leave/export');
@@ -204,27 +199,26 @@ async function exportLeave() {
 async function importLeave(e) {
   const file = e.target.files[0];
   if (!file) return;
-  e.target.value = ''; // reset để chọn lại cùng file được
+  e.target.value = '';
 
-  openModal('Import Excel',
-    `<p>Đã chọn tệp: <b>${escapeHtml(file.name)}</b></p>
-     <p class="muted-note" style="margin-top:12px;">Bảng sẽ được <b>dựng lại theo đúng các cột trong file</b> (thay thế toàn bộ dữ liệu hiện tại). Chương trình tự dò sheet và dòng tiêu đề.</p>`,
-    `<button class="btn" onclick="closeModal()">Huỷ</button>
-     <button class="btn btn-primary" id="lv-do-import">Bắt đầu import</button>`);
+  openModal(t('importLeaveTitle'),
+    `<p>${t('importLeaveHint')}</p>`,
+    `<button class="btn" onclick="closeModal()">${t('cancel')}</button>
+     <button class="btn btn-primary" id="lv-do-import">${t('startImport')}</button>`);
 
   document.getElementById('lv-do-import').addEventListener('click', async () => {
     const btn = document.getElementById('lv-do-import');
-    btn.disabled = true; btn.textContent = 'Đang xử lý...';
+    btn.disabled = true; btn.textContent = t('importing');
     try {
       const fd = new FormData();
       fd.append('file', file);
       const result = await api('/api/leave/import', { method: 'POST', body: fd });
       closeModal();
-      showToast('Đã import ' + result.imported + ' dòng — đã dựng cột theo file.', 'ok');
+      showToast(t('leaveImportedMsg') + ' ' + result.imported + ' ' + t('rowsSkipped').split(' ')[0] + '.', 'ok');
       loadLeave();
     } catch (err) {
       showToast(err.message, 'err');
-      btn.disabled = false; btn.textContent = 'Bắt đầu import';
+      btn.disabled = false; btn.textContent = t('startImport');
     }
   });
 }

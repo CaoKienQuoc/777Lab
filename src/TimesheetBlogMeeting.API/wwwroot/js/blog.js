@@ -1,3 +1,14 @@
+/* =========================================================================
+   blog.js — Quản lý bài viết blog
+   ========================================================================= */
+
+const EMPTY_BLOG = (admin) => `
+  <div class="card"><div class="empty">
+    <span class="ico">📰</span>
+    <p><b>${t('emptyBlog')}</b></p>
+    <p>${admin ? t('emptyBlogHint') : t('availableLater')}</p>
+  </div></div>`;
+
 function initBlog() {
   const btn = document.getElementById('btn-new-blog');
   if (!isAdmin()) {
@@ -22,12 +33,7 @@ async function loadBlogs() {
 function renderBlogList(posts) {
   const box = document.getElementById('blog-container');
   if (!posts || posts.length === 0) {
-    box.innerHTML = `
-      <div class="card"><div class="empty">
-        <span class="ico">📰</span>
-        <p><b>Chưa có bài viết nào.</b></p>
-        <p>Nhấn “Đăng bài mới” để tạo bài viết đầu tiên.</p>
-      </div></div>`;
+    box.innerHTML = EMPTY_BLOG(isAdmin());
     return;
   }
 
@@ -40,8 +46,8 @@ function renderBlogList(posts) {
 
     const actions = canEdit ? `
       <div class="blog-row-actions">
-        <button class="btn btn-ghost btn-sm" data-edit="${p.id}" title="Sửa">✎</button>
-        <button class="btn btn-danger btn-sm" data-del="${p.id}" title="Xoá">🗑</button>
+        <button class="btn btn-ghost btn-sm" data-edit="${p.id}" title="${t('editPost')}">✎</button>
+        <button class="btn btn-danger btn-sm" data-del="${p.id}" title="${t('deletePost')}">🗑</button>
       </div>` : '';
 
     return `
@@ -62,10 +68,9 @@ function renderBlogList(posts) {
 
   box.innerHTML = `<div class="blog-list">${items}</div>`;
 
-  // Mở chi tiết khi bấm vào bài
   box.querySelectorAll('[data-open]').forEach(el => {
     el.addEventListener('click', (e) => {
-      if (e.target.closest('[data-edit],[data-del]')) return; // né nút
+      if (e.target.closest('[data-edit],[data-del]')) return;
       openBlogDetail(el.dataset.open);
     });
   });
@@ -77,11 +82,10 @@ function renderBlogList(posts) {
 
 function excerpt(text, n) {
   if (!text) return '';
-  const t = text.replace(/\s+/g, ' ').trim();
-  return t.length > n ? t.slice(0, n) + '…' : t;
+  const t2 = text.replace(/\s+/g, ' ').trim();
+  return t2.length > n ? t2.slice(0, n) + '…' : t2;
 }
 
-/* ---------- Chi tiết bài viết ---------- */
 async function openBlogDetail(id) {
   try {
     const p = await api('/api/blog/' + id);
@@ -93,13 +97,12 @@ async function openBlogDetail(id) {
         <div class="post-body">${escapeHtml(p.content)}</div>
         ${img}
       </div>`;
-    openModal('Bài viết', body, `<button class="btn" onclick="closeModal()">Đóng</button>`, true);
+    openModal(t('postDetail'), body, `<button class="btn" onclick="closeModal()">${t('close')}</button>`, true);
   } catch (err) {
     showToast(err.message, 'err');
   }
 }
 
-/* ---------- Form tạo / sửa ---------- */
 let _blogImageFile = null;
 
 async function openBlogForm(id) {
@@ -116,35 +119,35 @@ async function openBlogForm(id) {
 
   const removeRow = post && post.imageUrl
     ? `<label style="margin-top:10px; font-weight:400; display:flex; gap:8px; align-items:center;">
-         <input type="checkbox" id="blog-remove-img" style="width:auto;" /> Xoá ảnh hiện tại
+         <input type="checkbox" id="blog-remove-img" style="width:auto;" /> ${t('removeImage')}
        </label>` : '';
 
   const body = `
     <div class="field">
-      <label for="blog-title">Tiêu đề</label>
-      <input type="text" id="blog-title" maxlength="300" value="${post ? escapeHtml(post.title) : ''}" placeholder="Nhập tiêu đề bài viết" />
+      <label for="blog-title">${t('title')}</label>
+      <input type="text" id="blog-title" maxlength="300" value="${post ? escapeHtml(post.title) : ''}" placeholder="${t('newPostTitle')}" />
     </div>
     <div class="field">
-      <label for="blog-content">Nội dung</label>
-      <textarea id="blog-content" placeholder="Nhập nội dung...">${post ? escapeHtml(post.content) : ''}</textarea>
+      <label for="blog-content">${t('content')}</label>
+      <textarea id="blog-content" placeholder="${t('newPostTitle')}">${post ? escapeHtml(post.content) : ''}</textarea>
     </div>
     <div class="field">
-      <label>Hình ảnh (tuỳ chọn)</label>
+      <label>${t('image')}</label>
       <div class="file-drop" id="blog-drop">
-        <span id="blog-drop-text">📷 Bấm để chọn ảnh (JPG, PNG, GIF, WEBP — tối đa 5MB)</span>
+        <span id="blog-drop-text">${t('selectImage')}</span>
         <input type="file" id="blog-file" accept="image/*" />
       </div>
       ${existingImg}
       ${removeRow}
     </div>`;
 
+  const isEdit = !!id;
   const foot = `
-    <button class="btn" onclick="closeModal()">Huỷ</button>
-    <button class="btn btn-primary" id="blog-save">${id ? 'Lưu thay đổi' : 'Đăng bài'}</button>`;
+    <button class="btn" onclick="closeModal()">${t('cancel')}</button>
+    <button class="btn btn-primary" id="blog-save">${isEdit ? t('save') : t('post')}</button>`;
 
-  openModal(id ? 'Sửa bài viết' : 'Đăng bài mới', body, foot);
+  openModal(isEdit ? t('editPost') : t('newPostTitle'), body, foot);
 
-  // Chọn ảnh
   const drop = document.getElementById('blog-drop');
   const file = document.getElementById('blog-file');
   const preview = document.getElementById('blog-img-preview');
@@ -153,7 +156,7 @@ async function openBlogForm(id) {
   file.addEventListener('change', () => {
     const f = file.files[0];
     if (!f) return;
-    if (f.size > 5 * 1024 * 1024) { showToast('Ảnh vượt quá 5MB.', 'err'); file.value = ''; return; }
+    if (f.size > 5 * 1024 * 1024) { showToast(t('invalidFile'), 'err'); file.value = ''; return; }
     _blogImageFile = f;
     dropText.textContent = '✓ ' + f.name;
     preview.src = URL.createObjectURL(f);
@@ -168,7 +171,7 @@ async function openBlogForm(id) {
 async function saveBlog(id) {
   const title = document.getElementById('blog-title').value.trim();
   const content = document.getElementById('blog-content').value.trim();
-  if (!title || !content) { showToast('Vui lòng nhập tiêu đề và nội dung.', 'err'); return; }
+  if (!title || !content) { showToast(t('pleaseEnterTitleAndContent'), 'err'); return; }
 
   const fd = new FormData();
   fd.append('Title', title);
@@ -178,31 +181,32 @@ async function saveBlog(id) {
   if (rm && rm.checked) fd.append('RemoveImage', 'true');
 
   const btn = document.getElementById('blog-save');
-  btn.disabled = true; btn.textContent = 'Đang lưu...';
+  const isEdit = !!id;
+  btn.disabled = true; btn.textContent = t('saving');
   try {
     await api('/api/blog' + (id ? '/' + id : ''), {
       method: id ? 'PUT' : 'POST',
       body: fd
     });
     closeModal();
-    showToast(id ? 'Đã cập nhật bài viết.' : 'Đã đăng bài viết.', 'ok');
+    showToast(isEdit ? t('postSaved') : t('postCreated'), 'ok');
     loadBlogs();
   } catch (err) {
     showToast(err.message, 'err');
-    btn.disabled = false; btn.textContent = id ? 'Lưu thay đổi' : 'Đăng bài';
+    btn.disabled = false; btn.textContent = isEdit ? t('save') : t('post');
   }
 }
 
 function deleteBlog(id) {
-  openModal('Xoá bài viết',
-    '<p>Bạn có chắc chắn muốn xoá bài viết này? Hành động không thể hoàn tác.</p>',
-    `<button class="btn" onclick="closeModal()">Huỷ</button>
-     <button class="btn btn-primary" id="confirm-del-blog">Xoá</button>`);
+  openModal(t('deletePost'),
+    `<p>${t('deletePostConfirm')}</p>`,
+    `<button class="btn" onclick="closeModal()">${t('cancel')}</button>
+     <button class="btn btn-primary" id="confirm-del-blog">${t('deletePost')}</button>`);
   document.getElementById('confirm-del-blog').addEventListener('click', async () => {
     try {
       await api('/api/blog/' + id, { method: 'DELETE' });
       closeModal();
-      showToast('Đã xoá bài viết.', 'ok');
+      showToast(t('deletePostDone'), 'ok');
       loadBlogs();
     } catch (err) { showToast(err.message, 'err'); }
   });

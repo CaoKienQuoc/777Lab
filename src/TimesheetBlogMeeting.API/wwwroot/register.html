@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Đăng ký — 777LAB</title>
+  <title data-i18n-title="register">Đăng ký — 777LAB</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -13,34 +13,36 @@
   <div class="login-wrap">
     <div class="login-card">
       <div class="login-brand">
-        <div class="kicker">Hệ thống nội bộ</div>
-        <h1>777<span style="color:var(--accent)">LAB</span></h1>
-        <p>Tạo tài khoản mới</p>
+        <h1 style="font-weight:700; color:#DB0000;">777LAB</h1>
+        <p data-i18n="createAccount">Tạo tài khoản mới</p>
       </div>
 
       <form id="register-form">
         <div class="field">
-          <label for="fullName">Họ và tên</label>
-          <input type="text" id="fullName" name="fullName" autocomplete="name" placeholder="Nhập họ và tên" required />
+          <label for="fullName" data-i18n="fullName">Họ và tên</label>
+          <input type="text" id="fullName" name="fullName" autocomplete="name" data-i18n-placeholder="fullNamePlaceholder" required />
         </div>
         <div class="field">
-          <label for="username">Tên đăng nhập</label>
-          <input type="text" id="username" name="username" autocomplete="username" placeholder="Ít nhất 3 ký tự" required />
+          <label for="username" data-i18n="username">Tên đăng nhập</label>
+          <input type="text" id="username" name="username" autocomplete="username" data-i18n-placeholder="usernameShortHint" required />
         </div>
         <div class="field">
-          <label for="password">Mật khẩu</label>
-          <input type="password" id="password" name="password" autocomplete="new-password" placeholder="Ít nhất 6 ký tự" required />
+          <label for="password" data-i18n="password">Mật khẩu</label>
+          <input type="password" id="password" name="password" autocomplete="new-password" data-i18n-placeholder="passwordLongHint" required />
         </div>
         <div class="field">
-          <label for="confirm">Nhập lại mật khẩu</label>
-          <input type="password" id="confirm" name="confirm" autocomplete="new-password" placeholder="Nhập lại mật khẩu" required />
+          <label for="confirm" data-i18n="confirmPassword">Nhập lại mật khẩu</label>
+          <input type="password" id="confirm" name="confirm" autocomplete="new-password" data-i18n-placeholder="confirmPasswordPlaceholder" required />
         </div>
-        <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;" id="register-btn">
+        <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;" id="register-btn" data-i18n="registerBtn">
           Tạo tài khoản
         </button>
       </form>
 
-      <p class="login-alt">Đã có tài khoản? <a href="/login.html">Đăng nhập</a></p>
+      <p class="login-alt">
+        <span data-i18n="hasAccount">Đã có tài khoản?</span>
+        <a href="/login.html" data-i18n="login">Đăng nhập</a>
+      </p>
     </div>
   </div>
 
@@ -48,5 +50,40 @@
 
   <script src="/js/api.js"></script>
   <script src="/js/register.js"></script>
+  <script>
+    (function() {
+      const LANG = localStorage.getItem('lang') || 'vi';
+      const LANG_KEYS = {
+        vi: {
+          internalSystem: 'Hệ thống nội bộ', createAccount: 'Tạo tài khoản mới',
+          fullName: 'Họ và tên', username: 'Tên đăng nhập', password: 'Mật khẩu', confirmPassword: 'Nhập lại mật khẩu',
+          fullNamePlaceholder: 'Nhập họ và tên', usernameShortHint: 'Ít nhất 3 ký tự',
+          passwordLongHint: 'Ít nhất 6 ký tự', confirmPasswordPlaceholder: 'Nhập lại mật khẩu',
+          registerBtn: 'Tạo tài khoản', hasAccount: 'Đã có tài khoản?', login: 'Đăng nhập'
+        },
+        ja: {
+          internalSystem: '社内システム', createAccount: 'アカウント作成',
+          fullName: '氏名', username: 'ユーザー名', password: 'パスワード', confirmPassword: 'パスワード再入力',
+          fullNamePlaceholder: '氏名を入力', usernameShortHint: '最小3文字',
+          passwordLongHint: '最小6文字', confirmPasswordPlaceholder: 'パスワードを再入力してください',
+          registerBtn: 'アカウント作成', hasAccount: 'すでにアカウントをお持ちですか？', login: 'ログイン'
+        }
+      };
+      const t = (key) => (LANG_KEYS[LANG] && LANG_KEYS[LANG][key]) || key;
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (LANG_KEYS[LANG] && LANG_KEYS[LANG][key]) el.textContent = LANG_KEYS[LANG][key];
+      });
+      document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (LANG_KEYS[LANG] && LANG_KEYS[LANG][key]) el.placeholder = LANG_KEYS[LANG][key];
+      });
+      const titleEl = document.querySelector('[data-i18n-title]');
+      if (titleEl && LANG_KEYS[LANG]) {
+        const key = titleEl.getAttribute('data-i18n-title');
+        if (LANG_KEYS[LANG][key]) titleEl.textContent = LANG_KEYS[LANG][key];
+      }
+    })();
+  </script>
 </body>
 </html>

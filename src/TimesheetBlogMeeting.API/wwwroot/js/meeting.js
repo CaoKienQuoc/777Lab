@@ -1,18 +1,18 @@
 /* =========================================================================
-   meeting.js — Mục 3: Đăng ký lịch họp
+   meeting.js — Đăng ký lịch họp
    Lịch tháng tự dựng + lưới khung giờ 30 phút (08:00–18:00) để chọn giờ họp.
    ========================================================================= */
 
-const SLOT_START_MIN = 8 * 60;   // 08:00
-const SLOT_END_MIN   = 18 * 60;  // 18:00
-const SLOT_STEP      = 30;       // 30 phút
-const SLOT_COUNT     = (SLOT_END_MIN - SLOT_START_MIN) / SLOT_STEP; // 20
+const SLOT_START_MIN = 8 * 60;
+const SLOT_END_MIN   = 18 * 60;
+const SLOT_STEP      = 30;
+const SLOT_COUNT     = (SLOT_END_MIN - SLOT_START_MIN) / SLOT_STEP;
 
 let _meetings = [];
-let _calYear, _calMonth;     // tháng đang hiển thị
-let _selDate = null;         // ngày đang chọn "YYYY-MM-DD"
-let _selStart = null;        // chỉ số ô bắt đầu
-let _selEnd = null;          // chỉ số ô kết thúc (bao gồm)
+let _calYear, _calMonth;
+let _selDate = null;
+let _selStart = null;
+let _selEnd = null;
 
 function initMeeting() {
   const now = new Date();
@@ -43,19 +43,21 @@ function renderMeetingModule() {
   renderBookPanel();
 }
 
-/* ---------- Lịch tháng ---------- */
 function meetingsOn(ymd) {
   return _meetings.filter(m => toYMD(new Date(m.meetingDate)) === ymd);
 }
 
 function renderCalendar() {
   const card = document.getElementById('cal-card');
-  const monthNames = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6',
-                      'Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
-  const dow = ['T2','T3','T4','T5','T6','T7','CN'];
+  const monthNames = LANG === 'ja'
+    ? ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月']
+    : ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6','Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
+  const dow = LANG === 'ja'
+    ? ['月','火','水','木','金','土','日']
+    : ['T2','T3','T4','T5','T6','T7','CN'];
 
   const first = new Date(_calYear, _calMonth, 1);
-  const offset = (first.getDay() + 6) % 7;       // thứ 2 đứng đầu
+  const offset = (first.getDay() + 6) % 7;
   const daysInMonth = new Date(_calYear, _calMonth + 1, 0).getDate();
   const todayYMD = toYMD(new Date());
 
@@ -72,15 +74,13 @@ function renderCalendar() {
     if (ymd < todayYMD) cls.push('past');
     if (ymd === _selDate) cls.push('selected');
 
-    // Hiển thị giờ bắt đầu + tiêu đề từng cuộc họp ngay trên ô ngày
-    // (tối đa 3 cuộc, dư thì gộp thành "+N nữa")
     const MAX_SHOW = 3;
     let eventsHtml = dayMtgs.slice(0, MAX_SHOW).map(m =>
       `<div class="cal-event" title="${escapeHtml(m.startTime)}–${escapeHtml(m.endTime)} ${escapeHtml(m.title)}">
          <span class="cal-event-time">${escapeHtml(m.startTime)}</span> ${escapeHtml(m.title)}
        </div>`).join('');
     if (dayMtgs.length > MAX_SHOW) {
-      eventsHtml += `<div class="cal-more">+${dayMtgs.length - MAX_SHOW} nữa</div>`;
+      eventsHtml += `<div class="cal-more">+${dayMtgs.length - MAX_SHOW} ${LANG === 'ja' ? '件' : 'nữa'}</div>`;
     }
 
     cells += `<div class="${cls.join(' ')}" data-ymd="${ymd}">
@@ -93,8 +93,8 @@ function renderCalendar() {
     <div class="cal-head">
       <h3>${monthNames[_calMonth]} ${_calYear}</h3>
       <div class="cal-nav">
-        <button id="cal-prev" title="Tháng trước">‹</button>
-        <button id="cal-next" title="Tháng sau">›</button>
+        <button id="cal-prev" title="${LANG === 'ja' ? '前月' : 'Tháng trước'}">‹</button>
+        <button id="cal-next" title="${LANG === 'ja' ? '翌月' : 'Tháng sau'}">›</button>
       </div>
     </div>
     <div class="cal-grid">${cells}</div>`;
@@ -119,16 +119,15 @@ function selectDay(ymd) {
   renderBookPanel();
 }
 
-/* ---------- Bảng đặt lịch (panel phải) ---------- */
 function renderBookPanel() {
   const panel = document.getElementById('book-panel');
 
   if (!_selDate) {
     panel.innerHTML = `
-      <h3>Đặt lịch họp</h3>
+      <h3>${t('meetingTitle')}</h3>
       <div class="empty" style="padding:40px 8px;">
         <span class="ico">📅</span>
-        <p>Chọn một ngày trên lịch để xem khung giờ và đặt lịch họp.</p>
+        <p>${t('selectDay')}</p>
       </div>`;
     return;
   }
@@ -138,35 +137,33 @@ function renderBookPanel() {
   const dayMeetings = meetingsOn(_selDate).slice()
     .sort((a, b) => a.startTime.localeCompare(b.startTime));
 
-  // Form nhập giờ
   let slotHtml = '';
   if (isPast) {
-    slotHtml = `<p class="muted-note">Không thể đặt lịch cho ngày đã qua. Bạn vẫn có thể xem các cuộc họp bên dưới.</p>`;
+    slotHtml = `<p class="muted-note">${t('cannotBookPast')}</p>`;
   } else {
     slotHtml = `
       <div class="field time-range-row">
         <div class="time-field">
-          <label for="mtg-start">Giờ bắt đầu</label>
+          <label for="mtg-start">${t('startTime')}</label>
           <select id="mtg-start">${timeOptions(SLOT_START_MIN, SLOT_END_MIN - SLOT_STEP, 8 * 60)}</select>
         </div>
         <span class="time-sep">–</span>
         <div class="time-field">
-          <label for="mtg-end">Giờ kết thúc</label>
+          <label for="mtg-end">${t('endTime')}</label>
           <select id="mtg-end">${timeOptions(SLOT_START_MIN + SLOT_STEP, SLOT_END_MIN, 9 * 60)}</select>
         </div>
       </div>
       <div class="field">
-        <label for="mtg-title">Tiêu đề cuộc họp</label>
-        <input type="text" id="mtg-title" maxlength="250" placeholder="VD: Họp giao ban tuần" />
+        <label for="mtg-title">${t('meetingTitleLabel')}</label>
+        <input type="text" id="mtg-title" maxlength="250" placeholder="${t('meetingTitleLabel')}" />
       </div>
       <div class="field">
-        <label for="mtg-desc">Mô tả (tuỳ chọn)</label>
-        <textarea id="mtg-desc" style="min-height:70px;" placeholder="Nội dung, phòng họp, thành phần..."></textarea>
+        <label for="mtg-desc">${t('desc')}</label>
+        <textarea id="mtg-desc" style="min-height:70px;" placeholder="${t('nothing')}"></textarea>
       </div>
-      <button class="btn btn-primary" id="mtg-book" style="width:100%; justify-content:center;">Đặt lịch họp</button>`;
+      <button class="btn btn-primary" id="mtg-book" style="width:100%; justify-content:center;">${t('book')}</button>`;
   }
 
-  // Danh sách cuộc họp trong ngày
   const me = getUser();
   let listHtml = '';
   if (dayMeetings.length) {
@@ -177,22 +174,22 @@ function renderBookPanel() {
           <div class="mtg-time">${escapeHtml(m.startTime)} – ${escapeHtml(m.endTime)}</div>
           <div class="mtg-title">${escapeHtml(m.title)}</div>
           ${m.description ? `<div class="mtg-by">${escapeHtml(m.description)}</div>` : ''}
-          <div class="mtg-by">Người đặt: ${escapeHtml(m.createdByName)}</div>
+          <div class="mtg-by">${t('meetingInfo')} ${escapeHtml(m.createdByName)}</div>
           ${canDel ? `<div class="mtg-actions">
-            <button class="btn btn-danger btn-sm" data-delmtg="${m.id}">🗑 Huỷ lịch</button>
+            <button class="btn btn-danger btn-sm" data-delmtg="${m.id}">🗑 ${LANG === 'ja' ? 'キャンセル' : 'Huỷ lịch'}</button>
           </div>` : ''}
         </div>`;
     }).join('');
   } else {
-    listHtml = `<p class="muted-note">Chưa có cuộc họp nào trong ngày này.</p>`;
+    listHtml = `<p class="muted-note">${t('noMeeting')}</p>`;
   }
 
   panel.innerHTML = `
-    <h3>Đặt lịch họp</h3>
+    <h3>${t('meetingTitle')}</h3>
     <div class="book-date">📌 ${formatDate(_selDate)}</div>
     ${slotHtml}
     <div class="day-meetings">
-      <h4>Cuộc họp trong ngày (${dayMeetings.length})</h4>
+      <h4>${t('meetingsToday')} (${dayMeetings.length})</h4>
       ${listHtml}
     </div>`;
 
@@ -202,7 +199,6 @@ function renderBookPanel() {
     b.addEventListener('click', () => deleteMeeting(b.dataset.delmtg)));
 }
 
-/* ---------- Logic khung giờ ---------- */
 function slotMinutes(i) { return SLOT_START_MIN + i * SLOT_STEP; }
 function slotLabel(i) { return minToHHMM(slotMinutes(i)); }
 function slotEndLabel(i) { return minToHHMM(slotMinutes(i) + SLOT_STEP); }
@@ -214,7 +210,6 @@ function hhmmToMin(s) {
   return h * 60 + m;
 }
 
-/* Sinh các <option> mốc giờ 30 phút theo định dạng 24h (HH:MM) */
 function timeOptions(fromMin, toMin, selectedMin) {
   let html = '';
   for (let m = fromMin; m <= toMin; m += SLOT_STEP) {
@@ -230,7 +225,7 @@ function isSlotBusy(i, dayMeetings) {
   return dayMeetings.some(m => {
     const mStart = hhmmToMin(m.startTime);
     const mEnd = hhmmToMin(m.endTime);
-    return bStart < mEnd && mStart < bEnd;   // có giao nhau
+    return bStart < mEnd && mStart < bEnd;
   });
 }
 
@@ -238,13 +233,11 @@ function toggleSlot(i, dayMeetings) {
   if (_selStart === null) {
     _selStart = i; _selEnd = i;
   } else if (i > _selEnd) {
-    // mở rộng vùng chọn nếu tất cả các ô ở giữa đều trống
     let ok = true;
     for (let k = _selStart; k <= i; k++) if (isSlotBusy(k, dayMeetings)) { ok = false; break; }
     if (ok) _selEnd = i;
     else { _selStart = i; _selEnd = i; showToast('Khoảng chọn có khung giờ đã bị đặt.', 'err'); }
   } else {
-    // bấm lại / bấm ô trước đó -> đặt lại
     _selStart = i; _selEnd = i;
   }
   renderBookPanel();
@@ -256,23 +249,22 @@ async function bookMeeting() {
   const startTime = document.getElementById('mtg-start').value;
   const endTime = document.getElementById('mtg-end').value;
 
-  if (!startTime || !endTime) { showToast('Vui lòng nhập giờ bắt đầu và giờ kết thúc.', 'err'); return; }
+  if (!startTime || !endTime) { showToast(t('timeRangeErr'), 'err'); return; }
 
   const sMin = hhmmToMin(startTime);
   const eMin = hhmmToMin(endTime);
 
   if (sMin < SLOT_START_MIN || eMin > SLOT_END_MIN) {
-    showToast('Thời gian họp phải nằm trong khoảng 08:00 – 18:00.', 'err'); return;
+    showToast(t('timeRangeErr'), 'err'); return;
   }
   if (eMin <= sMin) {
-    showToast('Giờ kết thúc phải sau giờ bắt đầu.', 'err'); return;
+    showToast(t('endAfterStart'), 'err'); return;
   }
   if ((eMin - sMin) < 30) {
-    showToast('Thời lượng họp tối thiểu 30 phút.', 'err'); return;
+    showToast(t('minDuration'), 'err'); return;
   }
-  if (!title) { showToast('Vui lòng nhập tiêu đề cuộc họp.', 'err'); return; }
+  if (!title) { showToast(t('noTitle'), 'err'); return; }
 
-  // Kiểm tra trùng lịch với các cuộc họp đã có
   const dayMeetings = meetingsOn(_selDate);
   const conflict = dayMeetings.find(m => {
     const mS = hhmmToMin(m.startTime);
@@ -280,7 +272,7 @@ async function bookMeeting() {
     return sMin < mE && mS < eMin;
   });
   if (conflict) {
-    showToast(`Trùng lịch với cuộc họp "${conflict.title}" (${conflict.startTime} – ${conflict.endTime}).`, 'err');
+    showToast(`${t('conflictWith')} "${conflict.title}" (${conflict.startTime} – ${conflict.endTime}).`, 'err');
     return;
   }
 
@@ -293,31 +285,30 @@ async function bookMeeting() {
   };
 
   const btn = document.getElementById('mtg-book');
-  btn.disabled = true; btn.textContent = 'Đang đặt lịch...';
+  btn.disabled = true; btn.textContent = t('booking');
   try {
     await api('/api/meeting', { method: 'POST', body: payload });
-    showToast('Đã đặt lịch họp thành công.', 'ok');
+    showToast(t('booked'), 'ok');
     _selStart = null; _selEnd = null;
     _meetings = await api('/api/meeting');
     renderCalendar();
     renderBookPanel();
   } catch (err) {
-    // 409 = trùng lịch -> err.message đã chứa thông tin cuộc họp bị trùng
     showToast(err.message, 'err');
-    if (btn) { btn.disabled = false; btn.textContent = 'Đặt lịch họp'; }
+    if (btn) { btn.disabled = false; btn.textContent = t('book'); }
   }
 }
 
 function deleteMeeting(id) {
-  openModal('Huỷ lịch họp',
-    '<p>Bạn có chắc muốn huỷ cuộc họp này?</p>',
-    `<button class="btn" onclick="closeModal()">Đóng</button>
-     <button class="btn btn-primary" id="confirm-del-mtg">Huỷ lịch</button>`);
+  openModal(t('cancelMeeting'),
+    '<p>' + t('cancelMeetingConfirm') + '</p>',
+    `<button class="btn" onclick="closeModal()">${t('close')}</button>
+     <button class="btn btn-primary" id="confirm-del-mtg">${t('cancelMeeting')}</button>`);
   document.getElementById('confirm-del-mtg').addEventListener('click', async () => {
     try {
       await api('/api/meeting/' + id, { method: 'DELETE' });
       closeModal();
-      showToast('Đã huỷ cuộc họp.', 'ok');
+      showToast(t('meetingCancelled'), 'ok');
       _meetings = await api('/api/meeting');
       renderCalendar();
       renderBookPanel();

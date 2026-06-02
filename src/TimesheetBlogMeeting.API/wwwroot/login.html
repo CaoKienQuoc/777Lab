@@ -3,35 +3,45 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Đăng nhập — 777LAB</title>
+  <title data-i18n-title="login">Đăng nhập — 777LAB</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/style.css" />
+  <style>
+.lang-flag {
+  width: 28px; height: 20px; cursor: pointer; margin-left: 12px; border-radius: 3px;
+  border: 1px solid var(--line); transition: all .15s;
+}
+.lang-flag:hover { border-color: var(--accent); transform: scale(1.05); }
+</style>
 </head>
 <body>
   <div class="login-wrap">
+    <img id="lang-flag" class="lang-flag" src="https://flagcdn.com/vn.svg" alt="VI" title="Chuyển sang Nhật" style="position:absolute; top:16px; right:16px;" />
     <div class="login-card">
       <div class="login-brand">
-        <div class="kicker">Hệ thống nội bộ</div>
-        <h1>777<span style="color:var(--accent)">LAB</span></h1>
+        <h1 style="font-weight:700; color:#DB0000;">777LAB</h1>
       </div>
 
       <form id="login-form">
         <div class="field">
-          <label for="username">Tên đăng nhập</label>
-          <input type="text" id="username" name="username" autocomplete="username" placeholder="Nhập tên đăng nhập" required />
+          <label for="username" data-i18n="username">Tên đăng nhập</label>
+          <input type="text" id="username" name="username" autocomplete="username" data-i18n-placeholder="usernamePlaceholder" required />
         </div>
         <div class="field">
-          <label for="password">Mật khẩu</label>
-          <input type="password" id="password" name="password" autocomplete="current-password" placeholder="Nhập mật khẩu" required />
+          <label for="password" data-i18n="password">Mật khẩu</label>
+          <input type="password" id="password" name="password" autocomplete="current-password" data-i18n-placeholder="passwordPlaceholder" required />
         </div>
-        <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;" id="login-btn">
+        <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;" id="login-btn" data-i18n="loginBtn">
           Đăng nhập
         </button>
       </form>
 
-      <p class="login-alt">Chưa có tài khoản? <a href="/register.html">Đăng ký</a></p>
+      <p class="login-alt">
+        <span data-i18n="noAccount">Chưa có tài khoản?</span>
+        <a href="/register.html" data-i18n="register">Đăng ký</a>
+      </p>
 
       <!-- TẠM ẨN đăng nhập Google (chưa có domain + HTTPS nên Google chặn origin).
            Bật lại: bỏ comment khối này và thẻ script GSI ở cuối trang.
@@ -45,6 +55,53 @@
 
   <script src="/js/api.js"></script>
   <script src="/js/login.js"></script>
+  <script>
+    (function() {
+      const lang = localStorage.getItem('lang') || 'vi';
+      const LANG_KEYS = {
+        vi: {
+          internalSystem: 'Hệ thống nội bộ', username: 'Tên đăng nhập', password: 'Mật khẩu',
+          usernamePlaceholder: 'Nhập tên đăng nhập', passwordPlaceholder: 'Nhập mật khẩu',
+          loginBtn: 'Đăng nhập', noAccount: 'Chưa có tài khoản?', register: 'Đăng ký',
+          vi: 'Tiếng Việt', ja: 'Tiếng Nhật'
+        },
+        ja: {
+          internalSystem: '社内システム', username: 'ユーザー名', password: 'パスワード',
+          usernamePlaceholder: 'ユーザー名を入力', passwordPlaceholder: 'パスワードを入力',
+          loginBtn: 'ログイン', noAccount: 'アカウントをお持ちでないですか？', register: '新規登録',
+          vi: 'ベトナム語', ja: '日本語'
+        }
+      };
+      const t = (key) => (LANG_KEYS[lang] && LANG_KEYS[lang][key]) || key;
+      const apply = () => {
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+          const key = el.getAttribute('data-i18n');
+          if (LANG_KEYS[lang] && LANG_KEYS[lang][key]) el.textContent = LANG_KEYS[lang][key];
+        });
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+          const key = el.getAttribute('data-i18n-placeholder');
+          if (LANG_KEYS[lang] && LANG_KEYS[lang][key]) el.placeholder = LANG_KEYS[lang][key];
+        });
+        const titleEl = document.querySelector('[data-i18n-title]');
+        if (titleEl && LANG_KEYS[lang]) {
+          const key = titleEl.getAttribute('data-i18n-title');
+          if (LANG_KEYS[lang][key]) titleEl.textContent = LANG_KEYS[lang][key];
+        }
+        const flag = document.getElementById('lang-flag');
+        if (flag) {
+          flag.src = lang === 'ja' ? 'https://flagcdn.com/jp.svg' : 'https://flagcdn.com/vn.svg';
+          flag.alt = lang.toUpperCase();
+          flag.title = lang === 'ja' ? 'ベトナム語に切替' : '日本語に切替';
+        }
+      };
+      apply();
+      document.getElementById('lang-flag').addEventListener('click', () => {
+        const next = lang === 'vi' ? 'ja' : 'vi';
+        localStorage.setItem('lang', next);
+        location.reload();
+      });
+    })();
+  </script>
   <!-- TẠM ẨN đăng nhập Google — bật lại bằng cách bỏ comment dòng dưới:
   <script src="https://accounts.google.com/gsi/client" onload="onGoogleLoad()" async defer></script>
   -->

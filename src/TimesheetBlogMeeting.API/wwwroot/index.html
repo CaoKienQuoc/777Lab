@@ -67,12 +67,12 @@
     <!-- ===== View: Blog ===== -->
     <section class="view active" id="view-blog">
       <div class="view-head">
-        <div class="titles">
-          <h2>Blog &amp; Bài viết</h2>
-        </div>
-        <div class="view-actions">
-          <button class="btn btn-primary" id="btn-new-blog">+ Đăng bài mới</button>
-        </div>
+      <div class="titles">
+        <h2 data-i18n="blogAndPosts">Blog & Bài viết</h2>
+      </div>
+      <div class="view-actions">
+        <button class="btn btn-primary" id="btn-new-blog" data-i18n="addNew">+ Đăng bài mới</button>
+      </div>
       </div>
       <div id="blog-container">
         <div class="spinner"></div>
@@ -82,13 +82,13 @@
     <!-- ===== View: Timesheet ===== -->
     <section class="view" id="view-timesheet">
       <div class="view-head">
-        <div class="titles">
-          <h2>Bảng chấm công</h2>
-          <p id="timesheet-sub" class="view-sub"></p>
-        </div>
-        <div class="ts-search-wrapper" id="ts-search-container">
-          <input type="text" id="ts-search-input" placeholder="Tìm kiếm tên..." class="ts-search-input" />
-        </div>
+      <div class="titles">
+        <h2 data-i18n="timesheetTitle">Bảng chấm công</h2>
+        <p id="timesheet-sub" class="view-sub"></p>
+      </div>
+      <div class="ts-search-wrapper" id="ts-search-container">
+        <input type="text" id="ts-search-input" data-i18n-placeholder="tsSearchPlaceholder" class="ts-search-input" />
+      </div>
         <div class="view-actions" id="timesheet-actions"></div>
       </div>
       <div id="timesheet-container">
@@ -99,13 +99,13 @@
     <!-- ===== View: Leave balance (Phép tồn) ===== -->
     <section class="view" id="view-leave">
       <div class="view-head">
-        <div class="titles">
-          <h2>Phép tồn</h2>
-          <p id="leave-sub" class="view-sub"></p>
-        </div>
-        <div class="leave-search-wrapper" id="leave-search-container">
-          <input type="text" id="leave-search-input" placeholder="Tìm kiếm tên/code..." class="leave-search-input" />
-        </div>
+      <div class="titles">
+        <h2 data-i18n="leaveTitle">Phép tồn</h2>
+        <p id="leave-sub" class="view-sub"></p>
+      </div>
+      <div class="leave-search-wrapper" id="leave-search-container">
+        <input type="text" id="leave-search-input" data-i18n-placeholder="searchPlaceholder" class="leave-search-input" />
+      </div>
         <div class="view-actions" id="leave-actions"></div>
       </div>
       <div id="leave-container">
@@ -116,9 +116,9 @@
     <!-- ===== View: Meeting ===== -->
     <section class="view" id="view-meeting">
       <div class="view-head">
-        <div class="titles">
-          <h2>Đăng ký lịch họp</h2>
-        </div>
+      <div class="titles">
+        <h2 data-i18n="meetingTitle">Đăng ký lịch họp</h2>
+      </div>
       </div>
       <div id="meeting-container">
         <div class="spinner"></div>
@@ -128,12 +128,12 @@
     <!-- ===== View: Users (admin) ===== -->
     <section class="view" id="view-users">
       <div class="view-head">
-        <div class="titles">
-          <h2>Quản lý người dùng</h2>
-        </div>
-        <div class="view-actions">
-          <button class="btn btn-primary" id="btn-new-user">+ Thêm người dùng</button>
-        </div>
+      <div class="titles">
+        <h2 data-i18n="usersTitle">Quản lý người dùng</h2>
+      </div>
+      <div class="view-actions" id="users-actions">
+        <button class="btn btn-primary" id="btn-new-user" data-i18n="addNewUser">+ Thêm người dùng</button>
+      </div>
       </div>
       <div id="users-container">
         <div class="spinner"></div>

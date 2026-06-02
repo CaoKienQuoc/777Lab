@@ -1,3 +1,16 @@
+const EMPTY_TS = (admin) => `
+  <div class="card"><div class="empty">
+    <span class="ico">🗓️</span>
+    <p><b>${t('noTimesheet')}</b></p>
+    <p>${admin ? t('tsAdminHint') : t('tsUserHint')}</p>
+  </div></div>`;
+
+const EMPTY_TS_FILTERED = () => `
+  <div class="card"><div class="empty">
+    <span class="ico">🗓️</span>
+    <p><b>${t('noTimesheetMatch')}</b></p>
+  </div></div>`;
+
 let timesheetRows = [];
 let timesheetFilter = '';
 
@@ -44,33 +57,22 @@ async function loadTimesheet() {
 }
 
 function renderTimesheet(rows) {
+  const box = document.getElementById('timesheet-container');
   const admin = isAdmin();
   const allRows = rows || [];
   const filteredRows = timesheetFilter
-    ? allRows.filter(r => 
+    ? allRows.filter(r =>
         (r.employeeName && r.employeeName.toLowerCase().includes(timesheetFilter)) ||
         (r.note && r.note.toLowerCase().includes(timesheetFilter)))
     : allRows;
 
   if (filteredRows.length === 0 && rows && rows.length > 0) {
-    const box = document.getElementById('timesheet-container');
-    box.innerHTML = `
-      <div class="card"><div class="empty">
-        <span class="ico">🗓️</span>
-        <p><b>Không có dữ liệu phù hợp.</b></p>
-      </div></div>`;
+    box.innerHTML = EMPTY_TS_FILTERED();
     return;
   }
 
-  const box = document.getElementById('timesheet-container');
-
   if (!rows || rows.length === 0) {
-    box.innerHTML = `
-      <div class="card"><div class="empty">
-        <span class="ico">🗓️</span>
-        <p><b>Chưa có dữ liệu chấm công.</b></p>
-        <p>${admin ? 'Hãy import file Excel hoặc thêm dòng mới.' : 'Vui lòng quay lại sau.'}</p>
-      </div></div>`;
+    box.innerHTML = EMPTY_TS(admin);
     return;
   }
 
@@ -84,8 +86,8 @@ function renderTimesheet(rows) {
       <td class="num"><span class="pill pill-hours">${(r.workHours ?? 0)}</span></td>
       <td>${escapeHtml(r.note || '')}</td>
       ${admin ? `<td class="num"><div class="row-actions">
-        <button class="btn btn-ghost btn-sm" data-edit="${r.id}" title="Sửa">✎</button>
-        <button class="btn btn-danger btn-sm" data-del="${r.id}" title="Xoá">🗑</button>
+        <button class="btn btn-ghost btn-sm" data-edit="${r.id}" title="${t('editPost')}">✎</button>
+        <button class="btn btn-danger btn-sm" data-del="${r.id}" title="${t('deletePost')}">🗑</button>
       </div></td>` : ''}
     </tr>`).join('');
 
@@ -93,9 +95,9 @@ function renderTimesheet(rows) {
     <div class="card"><div class="table-wrap">
       <table class="data">
         <thead><tr>
-          <th class="num">#</th><th>Họ và tên</th><th>Ngày</th>
-          <th>Giờ vào</th><th>Giờ ra</th><th class="num">Số giờ</th><th>Ghi chú</th>
-          ${admin ? '<th class="num">Thao tác</th>' : ''}
+          <th class="num">#</th><th>${t('name')}</th><th>${t('date')}</th>
+          <th>${t('timeIn')}</th><th>${t('timeOut')}</th><th class="num">${t('hours')}</th><th>${t('note')}</th>
+          ${admin ? '<th class="num">' + t('action') + '</th>' : ''}
         </tr></thead>
         <tbody>${body}</tbody>
       </table>
@@ -109,46 +111,46 @@ function renderTimesheet(rows) {
   }
 }
 
-/* ---------- Thêm / sửa (chỉ admin) ---------- */
 function openTimesheetForm(id, rows) {
   const r = id && rows ? rows.find(x => x.id === id) : null;
   const dateVal = r ? toYMD(new Date(r.workDate)) : toYMD(new Date());
 
   const body = `
     <div class="field">
-      <label for="ts-name">Họ và tên</label>
-      <input type="text" id="ts-name" maxlength="150" value="${r ? escapeHtml(r.employeeName) : ''}" placeholder="Nguyễn Văn A" />
+      <label for="ts-name">${t('name')}</label>
+      <input type="text" id="ts-name" maxlength="150" value="${r ? escapeHtml(r.employeeName) : ''}" placeholder="${t('name')}" />
     </div>
     <div class="field-row">
       <div class="field">
-        <label for="ts-date">Ngày</label>
+        <label for="ts-date">${t('date')}</label>
         <input type="date" id="ts-date" value="${dateVal}" />
       </div>
       <div class="field">
-        <label for="ts-hours">Số giờ công</label>
+        <label for="ts-hours">${t('hours')}</label>
         <input type="number" id="ts-hours" step="0.5" min="0" value="${r ? (r.workHours ?? 0) : 8}" />
       </div>
     </div>
     <div class="field-row">
       <div class="field">
-        <label for="ts-in">Giờ vào</label>
+        <label for="ts-in">${t('timeIn')}</label>
         <input type="time" id="ts-in" value="${r && r.checkIn ? escapeHtml(r.checkIn) : '08:00'}" />
       </div>
       <div class="field">
-        <label for="ts-out">Giờ ra</label>
+        <label for="ts-out">${t('timeOut')}</label>
         <input type="time" id="ts-out" value="${r && r.checkOut ? escapeHtml(r.checkOut) : '17:00'}" />
       </div>
     </div>
     <div class="field">
-      <label for="ts-note">Ghi chú</label>
-      <input type="text" id="ts-note" value="${r ? escapeHtml(r.note || '') : ''}" placeholder="(tuỳ chọn)" />
+      <label for="ts-note">${t('note')}</label>
+      <input type="text" id="ts-note" value="${r ? escapeHtml(r.note || '') : ''}" placeholder="${t('nothing')}" />
     </div>`;
 
+  const isEdit = !!id;
   const foot = `
-    <button class="btn" onclick="closeModal()">Huỷ</button>
-    <button class="btn btn-primary" id="ts-save">${id ? 'Lưu' : 'Thêm'}</button>`;
+    <button class="btn" onclick="closeModal()">${t('cancel')}</button>
+    <button class="btn btn-primary" id="ts-save">${isEdit ? t('save') : t('addRow')}</button>`;
 
-  openModal(id ? 'Sửa dòng chấm công' : 'Thêm dòng chấm công', body, foot);
+  openModal(isEdit ? t('editRowTitle') : t('addRowTitle'), body, foot);
   document.getElementById('ts-save').addEventListener('click', () => saveTimesheet(id));
 }
 
@@ -161,41 +163,41 @@ async function saveTimesheet(id) {
     workHours: parseFloat(document.getElementById('ts-hours').value) || 0,
     note: document.getElementById('ts-note').value.trim()
   };
-  if (!payload.employeeName) { showToast('Vui lòng nhập họ tên.', 'err'); return; }
-  if (!payload.workDate) { showToast('Vui lòng chọn ngày.', 'err'); return; }
+  if (!payload.employeeName) { showToast(t('noName'), 'err'); return; }
+  if (!payload.workDate) { showToast(t('noDate'), 'err'); return; }
 
   const btn = document.getElementById('ts-save');
-  btn.disabled = true; btn.textContent = 'Đang lưu...';
+  const isEdit = !!id;
+  btn.disabled = true; btn.textContent = t('saving');
   try {
     await api('/api/timesheet' + (id ? '/' + id : ''), {
       method: id ? 'PUT' : 'POST',
       body: payload
     });
     closeModal();
-    showToast(id ? 'Đã cập nhật.' : 'Đã thêm dòng.', 'ok');
+    showToast(isEdit ? t('editDone') : t('addDone'), 'ok');
     loadTimesheet();
   } catch (err) {
     showToast(err.message, 'err');
-    btn.disabled = false; btn.textContent = id ? 'Lưu' : 'Thêm';
+    btn.disabled = false; btn.textContent = isEdit ? t('save') : t('addRow');
   }
 }
 
 function deleteTimesheet(id) {
-  openModal('Xoá dòng',
-    '<p>Xoá dòng chấm công này?</p>',
-    `<button class="btn" onclick="closeModal()">Huỷ</button>
-     <button class="btn btn-primary" id="confirm-del-ts">Xoá</button>`);
+  openModal(t('deleteRow'),
+    '<p>' + t('deleteRowConfirm') + '</p>',
+    `<button class="btn" onclick="closeModal()">${t('cancel')}</button>
+     <button class="btn btn-primary" id="confirm-del-ts">${t('deletePost')}</button>`);
   document.getElementById('confirm-del-ts').addEventListener('click', async () => {
     try {
       await api('/api/timesheet/' + id, { method: 'DELETE' });
       closeModal();
-      showToast('Đã xoá.', 'ok');
+      showToast(t('rowDeletedMsg'), 'ok');
       loadTimesheet();
     } catch (err) { showToast(err.message, 'err'); }
   });
 }
 
-/* ---------- Xuất / mẫu / import ---------- */
 async function exportTimesheet() {
   try {
     const blob = await api('/api/timesheet/export');
@@ -213,21 +215,17 @@ async function downloadTemplate() {
 async function importTimesheet(e) {
   const file = e.target.files[0];
   if (!file) return;
-  e.target.value = ''; // reset để chọn lại cùng file được
+  e.target.value = '';
 
-  openModal('Import Excel',
-    `<p>Đã chọn tệp: <b>${escapeHtml(file.name)}</b></p>
-     <label style="margin-top:14px; font-weight:400; display:flex; gap:8px; align-items:center;">
-       <input type="checkbox" id="ts-replace" style="width:auto;" /> Xoá toàn bộ dữ liệu cũ trước khi import
-     </label>
-     <p class="muted-note" style="margin-top:12px;">File cần có dòng tiêu đề ở hàng đầu (Họ tên, Ngày, Giờ vào, Giờ ra, Số giờ, Ghi chú). Tải “file mẫu” nếu chưa rõ định dạng.</p>`,
-    `<button class="btn" onclick="closeModal()">Huỷ</button>
-     <button class="btn btn-primary" id="ts-do-import">Bắt đầu import</button>`);
+  openModal(t('importTitle'),
+    `<p>${t('importXlsWarning')}</p>`,
+    `<button class="btn" onclick="closeModal()">${t('cancel')}</button>
+     <button class="btn btn-primary" id="ts-do-import">${t('startImport')}</button>`);
 
   document.getElementById('ts-do-import').addEventListener('click', async () => {
     const replace = document.getElementById('ts-replace').checked;
     const btn = document.getElementById('ts-do-import');
-    btn.disabled = true; btn.textContent = 'Đang xử lý...';
+    btn.disabled = true; btn.textContent = t('importing');
     try {
       const fd = new FormData();
       fd.append('file', file);
@@ -236,16 +234,16 @@ async function importTimesheet(e) {
         body: fd
       });
       closeModal();
-      let msg = 'Đã import ' + result.imported + ' dòng.';
+      let msg = t('importedMsg') + ' ' + result.imported + ' ' + t('rowsSkipped').split(' ')[0] + '.';
       if (result.errors && result.errors.length) {
-        msg += ' (' + result.errors.length + ' dòng lỗi bị bỏ qua)';
+        msg += ' (' + result.errors.length + ' ' + t('rowsSkipped').split(' ').slice(1).join(' ') + ')';
         showToast(result.errors[0], 'err');
       }
       showToast(msg, 'ok');
       loadTimesheet();
     } catch (err) {
       showToast(err.message, 'err');
-      btn.disabled = false; btn.textContent = 'Bắt đầu import';
+      btn.disabled = false; btn.textContent = t('startImport');
     }
   });
 }
