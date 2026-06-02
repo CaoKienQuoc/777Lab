@@ -31,7 +31,9 @@ const JA_HEADER_MAP = {
 function translateHeader(header) {
   if (LANG !== 'ja') return header;
   const key = header.trim().toLowerCase();
-  return JA_HEADER_MAP[key] || header;
+  const mapped = JA_HEADER_MAP[key];
+  if (mapped && mapped !== header) return header + ' (' + mapped + ')';
+  return header;
 }
 
 let leaveTable = { columns: [], rows: [] };
