@@ -38,7 +38,6 @@ public class MeetingController : ControllerBase
             throw new UnauthorizedAccessException("Token không hợp lệ. Vui lòng đăng nhập lại.");
         }
     }
-    private bool IsAdmin => User.IsInRole("Admin");
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<MeetingResponse>>> GetAll()
@@ -86,7 +85,7 @@ public class MeetingController : ControllerBase
     {
         var meeting = await _db.Meetings.Include(m => m.CreatedBy).FirstOrDefaultAsync(m => m.Id == id);
         if (meeting == null) return NotFound(new { message = "Không tìm thấy lịch họp." });
-        if (meeting.CreatedById != CurrentUserId && !IsAdmin) return Forbid();
+        if (meeting.CreatedById != CurrentUserId) return Forbid();
 
         if (!TryParseTime(request.StartTime, out var start) || !TryParseTime(request.EndTime, out var end))
             return BadRequest(new { message = "Giờ không hợp lệ (định dạng HH:mm)." });
@@ -113,7 +112,7 @@ public class MeetingController : ControllerBase
     {
         var meeting = await _db.Meetings.FindAsync(id);
         if (meeting == null) return NotFound(new { message = "Không tìm thấy lịch họp." });
-        if (meeting.CreatedById != CurrentUserId && !IsAdmin) return Forbid();
+        if (meeting.CreatedById != CurrentUserId) return Forbid();
 
         _db.Meetings.Remove(meeting);
         await _db.SaveChangesAsync();

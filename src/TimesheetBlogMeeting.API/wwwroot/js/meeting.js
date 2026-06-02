@@ -168,7 +168,7 @@ function renderBookPanel() {
   let listHtml = '';
   if (dayMeetings.length) {
     listHtml = dayMeetings.map(m => {
-      const canDel = isAdmin() || (me && me.userId === m.createdById);
+      const canDel = me && me.userId === m.createdById;
       return `
         <div class="mtg">
           <div class="mtg-time">${escapeHtml(m.startTime)} – ${escapeHtml(m.endTime)}</div>

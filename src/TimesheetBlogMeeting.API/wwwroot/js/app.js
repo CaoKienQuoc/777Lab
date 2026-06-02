@@ -118,8 +118,6 @@ document.addEventListener('DOMContentLoaded', () => {
   try { startRealtime(); } catch (e) { console.error('startRealtime lỗi:', e); }
 });
 
-const _loaded = {};
-
 function switchView(view) {
   if (view === 'users' && !isAdmin()) view = 'blog';
 
@@ -131,12 +129,9 @@ function switchView(view) {
   history.replaceState(null, '', '#' + view);
 
   if (view === 'blog') {
-    // Luôn tải lại để bài mới nhất hiển thị; mở tab Blog = đã đọc -> xoá badge
     loadBlogs();
     markBlogSeen();
-    _loaded.blog = true;
-  } else if (!_loaded[view]) {
-    _loaded[view] = true;
+  } else {
     if (view === 'timesheet') loadTimesheet();
     else if (view === 'leave') loadLeave();
     else if (view === 'meeting') loadMeetings();
