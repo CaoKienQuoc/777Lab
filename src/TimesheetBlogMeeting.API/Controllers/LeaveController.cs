@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using TimesheetBlogMeeting.API.Data;
 using TimesheetBlogMeeting.API.DTOs;
 using TimesheetBlogMeeting.API.Models;
+using TimesheetBlogMeeting.API.Services;
 
 namespace TimesheetBlogMeeting.API.Controllers;
 
@@ -33,10 +34,12 @@ public class LeaveController : ControllerBase
     };
 
     private readonly AppDbContext _db;
+    private readonly IRealtimeNotifier _rt;
 
-    public LeaveController(AppDbContext db)
+    public LeaveController(AppDbContext db, IRealtimeNotifier rt)
     {
         _db = db;
+        _rt = rt;
     }
 
     // ---- Ai cũng xem được ----
@@ -107,6 +110,7 @@ public class LeaveController : ControllerBase
         var row = new LeaveRow { Position = nextPos, CellsJson = Serialize(request.Cells) };
         _db.LeaveRows.Add(row);
         await _db.SaveChangesAsync();
+        await _rt.NotifyAsync("leave", "created");
         return Ok(new LeaveRowDto { Id = row.Id, Position = row.Position, Cells = Deserialize(row.CellsJson) });
     }
 
@@ -118,6 +122,7 @@ public class LeaveController : ControllerBase
         if (row == null) return NotFound(new { message = "Không tìm thấy dòng." });
         row.CellsJson = Serialize(request.Cells ?? new());
         await _db.SaveChangesAsync();
+        await _rt.NotifyAsync("leave", "updated");
         return Ok(new LeaveRowDto { Id = row.Id, Position = row.Position, Cells = Deserialize(row.CellsJson) });
     }
 
@@ -129,6 +134,7 @@ public class LeaveController : ControllerBase
         if (row == null) return NotFound(new { message = "Không tìm thấy dòng." });
         _db.LeaveRows.Remove(row);
         await _db.SaveChangesAsync();
+        await _rt.NotifyAsync("leave", "deleted");
         return NoContent();
     }
 
@@ -140,6 +146,7 @@ public class LeaveController : ControllerBase
         _db.LeaveRows.RemoveRange(_db.LeaveRows);
         _db.LeaveColumns.RemoveRange(_db.LeaveColumns);
         await _db.SaveChangesAsync();
+        await _rt.NotifyAsync("leave", "cleared");
         return NoContent();
     }
 
@@ -199,6 +206,7 @@ public class LeaveController : ControllerBase
             _db.LeaveRows.Add(new LeaveRow { Position = pos++, CellsJson = Serialize(dr) });
 
         await _db.SaveChangesAsync();
+        await _rt.NotifyAsync("leave", "imported");
         return Ok(new ImportResult { Imported = dataRows.Count });
     }
 

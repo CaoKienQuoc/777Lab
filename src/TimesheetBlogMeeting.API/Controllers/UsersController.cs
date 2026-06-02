@@ -5,6 +5,7 @@ using TimesheetBlogMeeting.API.Data;
 using TimesheetBlogMeeting.API.DTOs;
 using TimesheetBlogMeeting.API.Helpers;
 using TimesheetBlogMeeting.API.Models;
+using TimesheetBlogMeeting.API.Services;
 
 namespace TimesheetBlogMeeting.API.Controllers;
 
@@ -17,10 +18,12 @@ namespace TimesheetBlogMeeting.API.Controllers;
 public class UsersController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly IRealtimeNotifier _rt;
 
-    public UsersController(AppDbContext db)
+    public UsersController(AppDbContext db, IRealtimeNotifier rt)
     {
         _db = db;
+        _rt = rt;
     }
 
     private static readonly string[] ValidRoles = { "Admin", "Customer" };
@@ -65,6 +68,7 @@ public class UsersController : ControllerBase
 
         _db.Users.Add(user);
         await _db.SaveChangesAsync();
+        await _rt.NotifyAsync("users", "created");
 
         return CreatedAtAction(nameof(GetAll), new UserResponse
         {
@@ -97,6 +101,7 @@ public class UsersController : ControllerBase
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
 
         await _db.SaveChangesAsync();
+        await _rt.NotifyAsync("users", "updated");
 
         return Ok(new UserResponse
         {
@@ -120,6 +125,7 @@ public class UsersController : ControllerBase
 
         _db.Users.Remove(user); // cascade xoá luôn blog + lịch họp của user này
         await _db.SaveChangesAsync();
+        await _rt.NotifyAsync("users", "deleted");
         return NoContent();
     }
 

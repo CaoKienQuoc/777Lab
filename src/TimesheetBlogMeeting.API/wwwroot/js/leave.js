@@ -104,7 +104,7 @@ function initLeave() {
       document.getElementById('lv-import-file').click());
     document.getElementById('lv-import-file').addEventListener('change', importLeave);
   } else {
-    actions.innerHTML = `<button class="btn" id="lv-export">${t('exportExcelSm')}</button>`;
+    actions.innerHTML = `<button class="btn btn-dark" id="lv-export">${t('exportExcelSm')}</button>`;
     document.getElementById('lv-export').addEventListener('click', exportLeave);
   }
 

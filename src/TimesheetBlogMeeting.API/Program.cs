@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using TimesheetBlogMeeting.API.Data;
+using TimesheetBlogMeeting.API.Hubs;
 using TimesheetBlogMeeting.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -48,6 +49,20 @@ builder.Services
             ValidateLifetime = true,
             ClockSkew = TimeSpan.Zero
         };
+
+        // SignalR gửi JWT qua query string (?access_token=...) vì WebSocket
+        // không gửi được header Authorization. Chỉ áp dụng cho đường dẫn hub.
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                    context.Token = accessToken;
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorization();
@@ -56,6 +71,8 @@ builder.Services.AddAuthorization();
 // 4. Controllers + CORS + Swagger
 // ---------------------------------------------------------------------------
 builder.Services.AddControllers();
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<IRealtimeNotifier, RealtimeNotifier>();
 
 builder.Services.AddCors(options =>
 {
@@ -154,5 +171,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<AppHub>("/hubs/app");
 
 app.Run();

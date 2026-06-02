@@ -32,6 +32,7 @@ async function loadBlogs() {
 
 function renderBlogList(posts) {
   const box = document.getElementById('blog-container');
+  if (posts && posts.length) _blogLatestCreatedAt = posts[0].createdAt;
   if (!posts || posts.length === 0) {
     box.innerHTML = EMPTY_BLOG(isAdmin());
     return;
@@ -78,6 +79,9 @@ function renderBlogList(posts) {
     b.addEventListener('click', () => openBlogForm(b.dataset.edit)));
   box.querySelectorAll('[data-del]').forEach(b =>
     b.addEventListener('click', () => deleteBlog(b.dataset.del)));
+
+  // Người dùng đang xem danh sách -> coi như đã đọc hết
+  if (document.getElementById('view-blog').classList.contains('active')) markBlogSeen();
 }
 
 function excerpt(text, n) {
@@ -210,4 +214,90 @@ function deleteBlog(id) {
       loadBlogs();
     } catch (err) { showToast(err.message, 'err'); }
   });
+}
+
+/* =========================================================================
+   Thông báo bài viết mới — badge trên tab Blog + toast, tự kiểm tra định kỳ
+   ========================================================================= */
+
+const BLOG_SEEN_KEY = 'blogLastSeenAt';
+const BLOG_POLL_MS = 60000;
+let _blogPollTimer = null;
+let _blogLatestCreatedAt = '';   // createdAt của bài mới nhất từ lần tải gần nhất
+let _blogUnseenCount = 0;        // số badge hiện tại (để biết khi nào có thêm bài mới)
+
+function _blogMyId() { const u = getUser(); return u && u.userId; }
+
+// Số bài mới hơn mốc đã đọc, bỏ qua bài của chính mình
+function countUnseenBlogs(posts) {
+  const seen = localStorage.getItem(BLOG_SEEN_KEY) || '';
+  const myId = _blogMyId();
+  return posts.filter(p =>
+    p.authorId !== myId && (!seen || toVnDate(p.createdAt) > toVnDate(seen))
+  ).length;
+}
+
+function renderBlogBadge(n) {
+  const tab = document.getElementById('tab-blog');
+  if (!tab) return;
+  let badge = tab.querySelector('.tab-badge');
+  if (n > 0) {
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'tab-badge';
+      tab.appendChild(badge);
+    }
+    badge.textContent = n > 99 ? '99+' : String(n);
+  } else if (badge) {
+    badge.remove();
+  }
+}
+
+// Mở/đang xem tab Blog = đã đọc hết: đặt mốc = bài mới nhất, xoá badge
+function markBlogSeen() {
+  if (_blogLatestCreatedAt) localStorage.setItem(BLOG_SEEN_KEY, _blogLatestCreatedAt);
+  _blogUnseenCount = 0;
+  renderBlogBadge(0);
+}
+
+// Kiểm tra bài mới. isInitial = true ở lần chạy đầu khi mở app (không bắn toast).
+async function checkNewBlogs(isInitial) {
+  let posts;
+  try { posts = await api('/api/blog'); } catch { return; }
+  if (posts.length) _blogLatestCreatedAt = posts[0].createdAt;
+
+  // Lần đầu mở app mà chưa có mốc -> coi như đã đọc hết bài hiện có
+  if (isInitial && !localStorage.getItem(BLOG_SEEN_KEY)) { markBlogSeen(); return; }
+
+  // Đang ở tab Blog: cập nhật danh sách nếu có bài mới rồi đánh dấu đã đọc
+  if (document.getElementById('view-blog').classList.contains('active')) {
+    if (!isInitial && countUnseenBlogs(posts) > 0) renderBlogList(posts);
+    markBlogSeen();
+    return;
+  }
+
+  const n = countUnseenBlogs(posts);
+  if (!isInitial && n > _blogUnseenCount) {
+    showToast(t('newBlogToast').replace('{n}', n - _blogUnseenCount), 'ok');
+  }
+  _blogUnseenCount = n;
+  renderBlogBadge(n);
+}
+
+// Xử lý khi server báo blog thay đổi (gọi từ SignalR ở app.js).
+// Đang xem tab Blog -> tải lại danh sách ngay (gồm cả XOÁ/sửa, không chỉ bài mới).
+// Không xem -> cập nhật badge + toast.
+function onBlogChanged() {
+  if (document.getElementById('view-blog').classList.contains('active')) {
+    loadBlogs();
+  } else {
+    checkNewBlogs(false);
+  }
+}
+
+function startBlogNotify() {
+  checkNewBlogs(true);
+  // Polling làm lưới an toàn khi WebSocket rớt mạng (SignalR là kênh chính)
+  if (_blogPollTimer) clearInterval(_blogPollTimer);
+  _blogPollTimer = setInterval(() => checkNewBlogs(false), BLOG_POLL_MS);
 }

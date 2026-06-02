@@ -6,6 +6,7 @@ using TimesheetBlogMeeting.API.Data;
 using TimesheetBlogMeeting.API.DTOs;
 using TimesheetBlogMeeting.API.Helpers;
 using TimesheetBlogMeeting.API.Models;
+using TimesheetBlogMeeting.API.Services;
 
 namespace TimesheetBlogMeeting.API.Controllers;
 
@@ -20,14 +21,16 @@ public class BlogController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly IWebHostEnvironment _env;
+    private readonly IRealtimeNotifier _rt;
 
     private static readonly string[] AllowedImageExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
     private const long MaxImageBytes = 5 * 1024 * 1024; // 5MB
 
-    public BlogController(AppDbContext db, IWebHostEnvironment env)
+    public BlogController(AppDbContext db, IWebHostEnvironment env, IRealtimeNotifier rt)
     {
         _db = db;
         _env = env;
+        _rt = rt;
     }
 
     private Guid CurrentUserId
@@ -85,6 +88,9 @@ public class BlogController : ControllerBase
         await _db.SaveChangesAsync();
 
         await _db.Entry(post).Reference(b => b.Author).LoadAsync();
+
+        // Báo real-time cho mọi client đang mở app: có bài mới
+        await _rt.NotifyAsync("blog", "created");
         return CreatedAtAction(nameof(GetById), new { id = post.Id }, ToResponse(post));
     }
 
@@ -114,6 +120,8 @@ public class BlogController : ControllerBase
         }
 
         await _db.SaveChangesAsync();
+
+        await _rt.NotifyAsync("blog", "updated");
         return Ok(ToResponse(post));
     }
 
@@ -129,6 +137,8 @@ public class BlogController : ControllerBase
         DeletePhysicalImage(post.ImageUrl);
         _db.BlogPosts.Remove(post);
         await _db.SaveChangesAsync();
+
+        await _rt.NotifyAsync("blog", "deleted");
         return NoContent();
     }
 

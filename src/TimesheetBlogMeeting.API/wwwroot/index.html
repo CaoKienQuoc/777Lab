@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/style.css?v=3" />
   <style>
 .leave-search-wrapper {
   display: flex; align-items: center;
@@ -55,7 +55,7 @@
   <!-- ===== Tabs ===== -->
   <nav class="tabbar">
       <div class="tabbar-inner">
-          <button class="tab active" data-view="blog"><span class="ico"><img src="/img/chars-sm/Char 1.2.png" width="20" height="20"></span> Blog</button>
+          <button class="tab active" data-view="blog" id="tab-blog"><span class="ico"><img src="/img/chars-sm/Char 1.2.png" width="20" height="20"></span> Blog</button>
           <button class="tab" data-view="leave"><span class="ico"><img src="/img/chars-sm/Char 4.2.png" width="20" height="20"></span> Phép tồn</button>
           <button class="tab" data-view="timesheet"><span class="ico"><img src="/img/chars-sm/Char 3.1_pink.png" width="20" height="20"></span> Chấm công</button>
           <button class="tab" data-view="meeting"><span class="ico"><img src="/img/chars-sm/Char 2.1.png" width="20" height="20"></span> Lịch họp</button>
@@ -155,12 +155,13 @@
 
   <div id="toast-stack"></div>
 
-  <script src="/js/api.js"></script>
-  <script src="/js/app.js"></script>
-  <script src="/js/blog.js"></script>
-  <script src="/js/timesheet.js"></script>
-  <script src="/js/leave.js"></script>
-  <script src="/js/meeting.js"></script>
-  <script src="/js/users.js"></script>
+  <script src="/js/lib/signalr.min.js"></script>
+  <script src="/js/api.js?v=3"></script>
+  <script src="/js/app.js?v=3"></script>
+  <script src="/js/blog.js?v=3"></script>
+  <script src="/js/timesheet.js?v=3"></script>
+  <script src="/js/leave.js?v=3"></script>
+  <script src="/js/meeting.js?v=3"></script>
+  <script src="/js/users.js?v=3"></script>
 </body>
 </html>

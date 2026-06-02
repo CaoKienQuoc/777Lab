@@ -7,6 +7,7 @@ using TimesheetBlogMeeting.API.Data;
 using TimesheetBlogMeeting.API.DTOs;
 using TimesheetBlogMeeting.API.Helpers;
 using TimesheetBlogMeeting.API.Models;
+using TimesheetBlogMeeting.API.Services;
 
 namespace TimesheetBlogMeeting.API.Controllers;
 
@@ -20,10 +21,12 @@ namespace TimesheetBlogMeeting.API.Controllers;
 public class MeetingController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly IRealtimeNotifier _rt;
 
-    public MeetingController(AppDbContext db)
+    public MeetingController(AppDbContext db, IRealtimeNotifier rt)
     {
         _db = db;
+        _rt = rt;
     }
 
     private Guid CurrentUserId
@@ -74,6 +77,7 @@ public class MeetingController : ControllerBase
         _db.Meetings.Add(meeting);
         await _db.SaveChangesAsync();
         await _db.Entry(meeting).Reference(m => m.CreatedBy).LoadAsync();
+        await _rt.NotifyAsync("meeting", "created");
         return CreatedAtAction(nameof(GetAll), ToResponse(meeting));
     }
 
@@ -100,6 +104,7 @@ public class MeetingController : ControllerBase
         meeting.EndTime = request.EndTime;
 
         await _db.SaveChangesAsync();
+        await _rt.NotifyAsync("meeting", "updated");
         return Ok(ToResponse(meeting));
     }
 
@@ -112,6 +117,7 @@ public class MeetingController : ControllerBase
 
         _db.Meetings.Remove(meeting);
         await _db.SaveChangesAsync();
+        await _rt.NotifyAsync("meeting", "deleted");
         return NoContent();
     }
 

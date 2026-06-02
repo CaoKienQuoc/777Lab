@@ -230,6 +230,15 @@ textarea { resize: vertical; min-height: 120px; line-height: 1.6; }
 .tab:hover { color: var(--ink); }
 .tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
 .tab .ico { font-size: 16px; }
+.tab-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; padding: 0 5px;
+  background: var(--accent); color: #fff;
+  font-size: 11px; font-weight: 700; line-height: 1;
+  border-radius: 9px; margin-left: -2px;
+  animation: badge-pop .2s ease;
+}
+@keyframes badge-pop { from { transform: scale(0); } to { transform: scale(1); } }
 
 .container { max-width: var(--page-max); margin: 0 auto; padding: 30px var(--page-pad) 80px; }
 .view { display: none; animation: fade .25s ease; }
@@ -305,6 +314,11 @@ table.data tbody tr:hover { background: var(--surface-2); }
 table.data td.num, table.data th.num { text-align: center; font-variant-numeric: tabular-nums; }
 table.data td:not(.num), table.data th:not(.num) { text-align: center; }
 .row-actions { display: flex; gap: 2px; justify-content: center; }
+
+/* Bảng Phép tồn to & thoáng hơn cho dễ đọc (áp dụng cả admin lẫn người dùng) */
+#view-leave table.data { font-size: 15.5px; }
+#view-leave table.data thead th { padding: 16px 18px; font-size: 13px; }
+#view-leave table.data tbody td { padding: 16px 18px; }
 .row-actions .btn { font-size: 20px; padding: 10px 12px; }
 .pill { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11.5px; font-weight: 600; }
 .pill-hours { background: var(--ok-soft); color: var(--ok); }

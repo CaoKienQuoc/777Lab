@@ -30,7 +30,7 @@ function initTimesheet() {
       document.getElementById('ts-import-file').click());
     document.getElementById('ts-import-file').addEventListener('change', importTimesheet);
   } else {
-    actions.innerHTML = `<button class="btn" id="ts-export">${t('exportExcelSm')}</button>`;
+    actions.innerHTML = `<button class="btn btn-dark" id="ts-export">${t('exportExcelSm')}</button>`;
     document.getElementById('ts-export').addEventListener('click', exportTimesheet);
   }
 

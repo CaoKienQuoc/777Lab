@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using TimesheetBlogMeeting.API.Data;
 using TimesheetBlogMeeting.API.DTOs;
 using TimesheetBlogMeeting.API.Models;
+using TimesheetBlogMeeting.API.Services;
 
 namespace TimesheetBlogMeeting.API.Controllers;
 
@@ -23,10 +24,12 @@ public class TimesheetController : ControllerBase
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
     private readonly AppDbContext _db;
+    private readonly IRealtimeNotifier _rt;
 
-    public TimesheetController(AppDbContext db)
+    public TimesheetController(AppDbContext db, IRealtimeNotifier rt)
     {
         _db = db;
+        _rt = rt;
     }
 
     // ---- Ai cũng xem được ----
@@ -86,6 +89,7 @@ public class TimesheetController : ControllerBase
         };
         _db.TimesheetEntries.Add(entry);
         await _db.SaveChangesAsync();
+        await _rt.NotifyAsync("timesheet", "created");
         return Ok(ToResponse(entry));
     }
 
@@ -104,6 +108,7 @@ public class TimesheetController : ControllerBase
         entry.Note = request.Note;
 
         await _db.SaveChangesAsync();
+        await _rt.NotifyAsync("timesheet", "updated");
         return Ok(ToResponse(entry));
     }
 
@@ -115,6 +120,7 @@ public class TimesheetController : ControllerBase
         if (entry == null) return NotFound(new { message = "Không tìm thấy dòng chấm công." });
         _db.TimesheetEntries.Remove(entry);
         await _db.SaveChangesAsync();
+        await _rt.NotifyAsync("timesheet", "deleted");
         return NoContent();
     }
 
@@ -125,6 +131,7 @@ public class TimesheetController : ControllerBase
     {
         _db.TimesheetEntries.RemoveRange(_db.TimesheetEntries);
         await _db.SaveChangesAsync();
+        await _rt.NotifyAsync("timesheet", "cleared");
         return NoContent();
     }
 
@@ -211,6 +218,7 @@ public class TimesheetController : ControllerBase
 
         _db.TimesheetEntries.AddRange(entries);
         await _db.SaveChangesAsync();
+        await _rt.NotifyAsync("timesheet", "imported");
 
         result.Imported = entries.Count;
         return Ok(result);
