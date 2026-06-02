@@ -319,6 +319,13 @@ table.data td:not(.num), table.data th:not(.num) { text-align: center; }
 #view-leave table.data { font-size: 15.5px; }
 #view-leave table.data thead th { padding: 16px 18px; font-size: 13px; }
 #view-leave table.data tbody td { padding: 16px 18px; }
+
+/* Chấm công: dải thống kê của mỗi người */
+.ts-stats { display: flex; flex-wrap: wrap; gap: 10px 22px; padding: 14px 18px; margin-bottom: 14px; }
+.ts-stat { display: flex; gap: 6px; align-items: baseline; font-size: 13.5px; }
+.ts-stat .k { color: var(--muted-text); }
+.ts-stat .v { font-weight: 700; color: var(--ink); }
+.ts-status { color: var(--accent); font-weight: 600; font-size: 13px; }
 .row-actions .btn { font-size: 20px; padding: 10px 12px; }
 .pill { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11.5px; font-weight: 600; }
 .pill-hours { background: var(--ok-soft); color: var(--ok); }

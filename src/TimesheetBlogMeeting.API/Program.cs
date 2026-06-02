@@ -143,6 +143,17 @@ BEGIN
         [CellsJson] nvarchar(max) NOT NULL,
         CONSTRAINT [PK_LeaveRows] PRIMARY KEY ([Id])
     );
+END
+IF OBJECT_ID(N'[TimesheetPeople]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [TimesheetPeople] (
+        [Id] uniqueidentifier NOT NULL,
+        [Position] int NOT NULL,
+        [Name] nvarchar(200) NOT NULL,
+        [StatsJson] nvarchar(max) NOT NULL,
+        [DaysJson] nvarchar(max) NOT NULL,
+        CONSTRAINT [PK_TimesheetPeople] PRIMARY KEY ([Id])
+    );
 END");
 
     DbSeeder.Seed(db);             // Tạo tài khoản admin cố định

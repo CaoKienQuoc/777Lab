@@ -1,4 +1,5 @@
-using System.Globalization;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using ClosedXML.Excel;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,9 +12,12 @@ using TimesheetBlogMeeting.API.Services;
 namespace TimesheetBlogMeeting.API.Controllers;
 
 /// <summary>
-/// Bảng chấm công.
-/// - Mọi người dùng đã đăng nhập: chỉ XEM (GET) và xuất Excel.
-/// - Admin: thêm/sửa/xoá từng dòng và import từ file Excel.
+/// Bảng chấm công — import từ file báo cáo máy chấm công (CHECKIN-OUT).
+/// Mỗi người là 1 block: dòng "Tên:..", dòng thống kê, rồi lịch theo ngày (2 cột
+/// nửa tháng, mỗi ngày tới 3 ca vào/ra). Khi hiển thị: chọn người trong combobox
+/// để xem thống kê + bảng theo ngày (giờ vào sớm nhất, giờ ra muộn nhất, trạng thái).
+/// - Mọi người dùng đã đăng nhập: chỉ XEM và xuất Excel.
+/// - Admin: import (thay thế toàn bộ) và xoá.
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
@@ -22,6 +26,8 @@ public class TimesheetController : ControllerBase
 {
     private const string ExcelContentType =
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+    private static readonly JsonSerializerOptions JsonOpts = new() { WriteIndented = false };
 
     private readonly AppDbContext _db;
     private readonly IRealtimeNotifier _rt;
@@ -35,298 +41,303 @@ public class TimesheetController : ControllerBase
     // ---- Ai cũng xem được ----
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<TimesheetResponse>>> GetAll()
+    public async Task<ActionResult<IEnumerable<TimesheetPersonDto>>> GetAll()
     {
-        var rows = await _db.TimesheetEntries
-            .OrderBy(t => t.WorkDate).ThenBy(t => t.EmployeeName)
-            .Select(t => ToResponse(t))
-            .ToListAsync();
-        return Ok(rows);
+        var people = await _db.TimesheetPeople.OrderBy(p => p.Position).ToListAsync();
+        return Ok(people.Select(ToDto).ToList());
     }
 
-    /// <summary>Xuất toàn bộ bảng chấm công ra file Excel.</summary>
+    /// <summary>Xuất tất cả người ra một bảng tổng hợp (Tên | Ngày | Thứ | Vào | Ra | Trạng thái).</summary>
     [HttpGet("export")]
     public async Task<IActionResult> Export()
     {
-        var rows = await _db.TimesheetEntries
-            .OrderBy(t => t.WorkDate).ThenBy(t => t.EmployeeName)
-            .ToListAsync();
-
-        using var wb = BuildWorkbook(rows);
+        var people = await _db.TimesheetPeople.OrderBy(p => p.Position).ToListAsync();
+        using var wb = BuildWorkbook(people);
         using var ms = new MemoryStream();
         wb.SaveAs(ms);
         return File(ms.ToArray(), ExcelContentType, "BangChamCong.xlsx");
     }
 
-    /// <summary>Tải file Excel mẫu (đúng định dạng dùng cho import).</summary>
-    [HttpGet("template")]
-    public IActionResult Template()
-    {
-        var sample = new List<TimesheetEntry>
-        {
-            new() { EmployeeName = "Nguyễn Văn A", WorkDate = DateTime.Today, CheckIn = "08:00", CheckOut = "17:30", WorkHours = 8, Note = "" }
-        };
-        using var wb = BuildWorkbook(sample);
-        using var ms = new MemoryStream();
-        wb.SaveAs(ms);
-        return File(ms.ToArray(), ExcelContentType, "Mau_ChamCong.xlsx");
-    }
-
     // ---- Chỉ admin ----
 
-    [HttpPost]
-    [Authorize(Roles = "Admin")]
-    public async Task<ActionResult<TimesheetResponse>> Create(TimesheetRequest request)
-    {
-        var entry = new TimesheetEntry
-        {
-            EmployeeName = request.EmployeeName.Trim(),
-            WorkDate = request.WorkDate.Date,
-            CheckIn = request.CheckIn,
-            CheckOut = request.CheckOut,
-            WorkHours = request.WorkHours,
-            Note = request.Note
-        };
-        _db.TimesheetEntries.Add(entry);
-        await _db.SaveChangesAsync();
-        await _rt.NotifyAsync("timesheet", "created");
-        return Ok(ToResponse(entry));
-    }
-
-    [HttpPut("{id:guid}")]
-    [Authorize(Roles = "Admin")]
-    public async Task<ActionResult<TimesheetResponse>> Update(Guid id, TimesheetRequest request)
-    {
-        var entry = await _db.TimesheetEntries.FindAsync(id);
-        if (entry == null) return NotFound(new { message = "Không tìm thấy dòng chấm công." });
-
-        entry.EmployeeName = request.EmployeeName.Trim();
-        entry.WorkDate = request.WorkDate.Date;
-        entry.CheckIn = request.CheckIn;
-        entry.CheckOut = request.CheckOut;
-        entry.WorkHours = request.WorkHours;
-        entry.Note = request.Note;
-
-        await _db.SaveChangesAsync();
-        await _rt.NotifyAsync("timesheet", "updated");
-        return Ok(ToResponse(entry));
-    }
-
-    [HttpDelete("{id:guid}")]
-    [Authorize(Roles = "Admin")]
-    public async Task<IActionResult> Delete(Guid id)
-    {
-        var entry = await _db.TimesheetEntries.FindAsync(id);
-        if (entry == null) return NotFound(new { message = "Không tìm thấy dòng chấm công." });
-        _db.TimesheetEntries.Remove(entry);
-        await _db.SaveChangesAsync();
-        await _rt.NotifyAsync("timesheet", "deleted");
-        return NoContent();
-    }
-
-    /// <summary>Xoá toàn bộ bảng chấm công (admin).</summary>
     [HttpDelete("clear")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Clear()
     {
-        _db.TimesheetEntries.RemoveRange(_db.TimesheetEntries);
+        _db.TimesheetPeople.RemoveRange(_db.TimesheetPeople);
         await _db.SaveChangesAsync();
         await _rt.NotifyAsync("timesheet", "cleared");
         return NoContent();
     }
 
     /// <summary>
-    /// Import file Excel (.xlsx). Dòng 1 là tiêu đề cột:
-    /// Họ tên | Ngày | Giờ vào | Giờ ra | Số giờ | Ghi chú (cho phép thêm cột STT ở đầu).
-    /// Gửi tham số replace=true để xoá dữ liệu cũ trước khi import.
+    /// Import file báo cáo CHECKIN-OUT (.xlsx). Tự dò từng block người, đọc thống kê và
+    /// lịch theo ngày. Thay thế toàn bộ dữ liệu hiện có.
     /// </summary>
     [HttpPost("import")]
     [Authorize(Roles = "Admin")]
-    public async Task<ActionResult<ImportResult>> Import(IFormFile file, [FromQuery] bool replace = false)
+    public async Task<ActionResult<ImportResult>> Import(IFormFile file)
     {
         if (file == null || file.Length == 0)
             return BadRequest(new { message = "Chưa chọn file." });
-
-        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
-        if (ext != ".xlsx")
+        if (Path.GetExtension(file.FileName).ToLowerInvariant() != ".xlsx")
             return BadRequest(new { message = "Chỉ hỗ trợ file .xlsx" });
 
-        var result = new ImportResult();
-        var entries = new List<TimesheetEntry>();
-
+        List<TimesheetPerson> people;
         try
         {
             using var stream = file.OpenReadStream();
             using var wb = new XLWorkbook(stream);
-            var ws = wb.Worksheets.First();
-            var range = ws.RangeUsed();
-            if (range == null)
-                return BadRequest(new { message = "File rỗng." });
-
-            var header = range.Row(1);
-            var used = new HashSet<int>();
-
-            int? colDate = FindColumn(header, used, "ngày", "date");
-            int? colName = FindColumn(header, used, "họ tên", "ho ten", "tên", "ten", "name", "nhân viên", "nhan vien", "employee");
-            int? colIn = FindColumn(header, used, "giờ vào", "gio vao", "vào", "checkin", "check in", "time in");
-            int? colOut = FindColumn(header, used, "giờ ra", "gio ra", "ra", "checkout", "check out", "time out");
-            int? colHours = FindColumn(header, used, "số giờ", "so gio", "tổng giờ", "tong gio", "hours", "giờ công", "gio cong");
-            int? colNote = FindColumn(header, used, "ghi chú", "ghi chu", "note", "remark");
-
-            if (colName == null || colDate == null)
-                return BadRequest(new { message = "Không nhận diện được cột 'Họ tên' và 'Ngày'. Vui lòng dùng đúng file mẫu (tải ở nút 'Tải file mẫu')." });
-
-            int lastRow = range.LastRow().RowNumber();
-            for (int r = range.FirstRow().RowNumber() + 1; r <= lastRow; r++)
-            {
-                var row = ws.Row(r);
-                var name = row.Cell(colName.Value).GetString().Trim();
-                var date = ReadDate(row.Cell(colDate.Value));
-
-                if (string.IsNullOrWhiteSpace(name) && date == null)
-                    continue; // dòng trống -> bỏ qua
-
-                if (string.IsNullOrWhiteSpace(name))
-                {
-                    result.Errors.Add($"Dòng {r}: thiếu họ tên, đã bỏ qua.");
-                    continue;
-                }
-                if (date == null)
-                {
-                    result.Errors.Add($"Dòng {r}: ngày không hợp lệ, đã bỏ qua.");
-                    continue;
-                }
-
-                entries.Add(new TimesheetEntry
-                {
-                    EmployeeName = name,
-                    WorkDate = date.Value.Date,
-                    CheckIn = colIn != null ? ReadTime(row.Cell(colIn.Value)) : null,
-                    CheckOut = colOut != null ? ReadTime(row.Cell(colOut.Value)) : null,
-                    WorkHours = colHours != null ? ReadHours(row.Cell(colHours.Value)) : 0,
-                    Note = colNote != null ? row.Cell(colNote.Value).GetString().Trim() : null
-                });
-            }
+            people = ParseReport(wb);
         }
         catch (Exception ex)
         {
             return BadRequest(new { message = "Không đọc được file Excel: " + ex.Message });
         }
 
-        if (replace)
-            _db.TimesheetEntries.RemoveRange(_db.TimesheetEntries);
+        if (people.Count == 0)
+            return BadRequest(new { message = "Không tìm thấy dữ liệu chấm công trong file (cần có các dòng 'Tên:' và bảng theo ngày)." });
 
-        _db.TimesheetEntries.AddRange(entries);
+        _db.TimesheetPeople.RemoveRange(_db.TimesheetPeople);
+        _db.TimesheetPeople.AddRange(people);
         await _db.SaveChangesAsync();
         await _rt.NotifyAsync("timesheet", "imported");
 
-        result.Imported = entries.Count;
-        return Ok(result);
+        return Ok(new ImportResult { Imported = people.Count });
     }
 
-    // ---- Helpers ----
+    // ===================== Parse báo cáo =====================
 
-    private static XLWorkbook BuildWorkbook(List<TimesheetEntry> rows)
+    private static List<TimesheetPerson> ParseReport(XLWorkbook wb)
+    {
+        var people = new List<TimesheetPerson>();
+        int position = 0;
+
+        foreach (var ws in wb.Worksheets)
+        {
+            var used = ws.RangeUsed();
+            if (used == null) continue;
+            int firstRow = used.FirstRow().RowNumber();
+            int lastRow = used.LastRow().RowNumber();
+            int lastCol = Math.Min(used.LastColumn().ColumnNumber(), 30);
+
+            int r = firstRow;
+            while (r <= lastRow)
+            {
+                if (!TryGetName(ws, r, lastCol, out var name)) { r++; continue; }
+
+                int year = FindYear(ws, r, lastCol);
+                var stats = ParseStats(ws, r + 1, lastCol);
+
+                // Tiêu đề bảng ở r+2, dữ liệu bắt đầu r+3
+                var days = new List<TimesheetDayDto>();
+                int dr = r + 3;
+                while (dr <= lastRow)
+                {
+                    if (TryGetName(ws, dr, lastCol, out _)) break;             // sang người mới
+                    if (RowContains(ws, dr, lastCol, "Chữ ký")) { dr++; break; } // hết block
+
+                    ParseDayHalf(ws, dr, 2, year, days);   // nửa trái: cột 2..9
+                    ParseDayHalf(ws, dr, 10, year, days);  // nửa phải: cột 10..17
+                    dr++;
+                }
+
+                people.Add(new TimesheetPerson
+                {
+                    Position = position++,
+                    Name = name,
+                    StatsJson = JsonSerializer.Serialize(stats, JsonOpts),
+                    DaysJson = JsonSerializer.Serialize(days.OrderBy(d => d.Date).ToList(), JsonOpts)
+                });
+
+                r = dr;
+            }
+        }
+
+        return people;
+    }
+
+    /// <summary>Dò ô bắt đầu bằng "Tên:" trong dòng, trả về phần tên phía sau dấu hai chấm.</summary>
+    private static bool TryGetName(IXLWorksheet ws, int row, int lastCol, out string name)
+    {
+        name = "";
+        for (int c = 1; c <= lastCol; c++)
+        {
+            var s = ws.Cell(row, c).GetString().Trim();
+            if (s.StartsWith("Tên:", StringComparison.OrdinalIgnoreCase) ||
+                s.StartsWith("Tên ", StringComparison.OrdinalIgnoreCase))
+            {
+                var idx = s.IndexOf(':');
+                name = (idx >= 0 ? s[(idx + 1)..] : s[3..]).Trim();
+                if (name.Length > 0) return true;
+            }
+        }
+        return false;
+    }
+
+    private static int FindYear(IXLWorksheet ws, int row, int lastCol)
+    {
+        for (int c = 1; c <= lastCol; c++)
+        {
+            var m = Regex.Match(ws.Cell(row, c).GetString(), @"(\d{4})-\d{2}-\d{2}");
+            if (m.Success) return int.Parse(m.Groups[1].Value);
+        }
+        return DateTime.Now.Year;
+    }
+
+    private static List<TimesheetStatDto> ParseStats(IXLWorksheet ws, int row, int lastCol)
+    {
+        var stats = new List<TimesheetStatDto>();
+        for (int c = 1; c <= lastCol; c++)
+        {
+            var s = ws.Cell(row, c).GetString().Trim();
+            var idx = s.IndexOf(':');
+            if (idx <= 0) continue;
+            var label = s[..idx].Trim();
+            var value = s[(idx + 1)..].Trim();
+            if (label.Length > 0)
+                stats.Add(new TimesheetStatDto { Label = label, Value = value });
+        }
+        return stats;
+    }
+
+    /// <summary>Đọc 1 nửa bảng (1 ngày) từ startCol: [Ngày, Tuần, Vào, Ra, Vào, Ra, Vào, Ra].</summary>
+    private static void ParseDayHalf(IXLWorksheet ws, int row, int startCol, int year, List<TimesheetDayDto> days)
+    {
+        var date = ReadDate(ws.Cell(row, startCol), year);
+        if (date == null) return;
+
+        var weekday = ws.Cell(row, startCol + 1).GetString().Trim();
+
+        var ins = new List<TimeSpan>();
+        var outs = new List<TimeSpan>();
+        var statusSet = new List<string>();
+        bool late = false, early = false;
+
+        for (int k = 0; k < 3; k++)
+        {
+            ReadTimeInto(ws.Cell(row, startCol + 2 + k * 2), ins, statusSet, ref late);
+            ReadTimeInto(ws.Cell(row, startCol + 3 + k * 2), outs, statusSet, ref early);
+        }
+
+        if (late && !statusSet.Contains("đi muộn")) statusSet.Add("đi muộn");
+        if (early && !statusSet.Contains("về sớm")) statusSet.Add("về sớm");
+
+        days.Add(new TimesheetDayDto
+        {
+            Date = date.Value.ToString("yyyy-MM-dd"),
+            Weekday = weekday,
+            CheckIn = ins.Count > 0 ? Fmt(ins.Min()) : null,
+            CheckOut = outs.Count > 0 ? Fmt(outs.Max()) : null,
+            Status = statusSet.Count > 0 ? string.Join(", ", statusSet) : null
+        });
+    }
+
+    /// <summary>
+    /// Đọc ngày từ CHUỖI HIỂN THỊ "05-01" (MM-DD). KHÔNG dùng giá trị DateTime vì file
+    /// máy chấm công lưu ngày bị hoán đổi tháng/ngày (hiển thị 05-01 nhưng giá trị là 01-05).
+    /// </summary>
+    private static DateTime? ReadDate(IXLCell cell, int year)
+    {
+        if (cell.IsEmpty()) return null;
+        var s = cell.GetFormattedString().Trim();
+        var m = Regex.Match(s, @"(\d{1,2})\D+(\d{1,2})");
+        if (!m.Success) return null;
+        try { return new DateTime(year, int.Parse(m.Groups[1].Value), int.Parse(m.Groups[2].Value)); }
+        catch { return null; }
+    }
+
+    /// <summary>
+    /// Đọc 1 ô giờ: ưu tiên giá trị thời gian thật (TimeSpan/DateTime/số phân số), vì GetString
+    /// trả về định dạng 12 giờ sai. Nếu là text thì nhận LỄ/OFF và "HH:mm" (kèm * = bất thường).
+    /// </summary>
+    private static void ReadTimeInto(IXLCell cell, List<TimeSpan> times, List<string> statusSet, ref bool flag)
+    {
+        if (cell.IsEmpty()) return;
+        try
+        {
+            if (cell.DataType == XLDataType.TimeSpan) { times.Add(cell.GetTimeSpan()); return; }
+            if (cell.DataType == XLDataType.DateTime) { times.Add(cell.GetDateTime().TimeOfDay); return; }
+            if (cell.DataType == XLDataType.Number) { var v = cell.GetDouble(); if (v > 0 && v < 2) { times.Add(TimeSpan.FromDays(v)); return; } }
+        }
+        catch { /* rơi xuống đọc chuỗi */ }
+
+        var s = cell.GetString().Trim();
+        if (s.Length == 0) return;
+        var upper = s.ToUpperInvariant();
+        if (upper is "LỄ" or "LE") { if (!statusSet.Contains("LỄ")) statusSet.Add("LỄ"); return; }
+        if (upper == "OFF") { if (!statusSet.Contains("OFF")) statusSet.Add("OFF"); return; }
+
+        bool star = s.Contains('*');
+        var m = Regex.Match(s.Replace("*", ""), @"(\d{1,2}):(\d{2})");
+        if (m.Success &&
+            int.TryParse(m.Groups[1].Value, out var h) &&
+            int.TryParse(m.Groups[2].Value, out var mi) &&
+            h < 24 && mi < 60)
+        {
+            times.Add(new TimeSpan(h, mi, 0));
+            if (star) flag = true;
+        }
+    }
+
+    private static string Fmt(TimeSpan t) => $"{t.Hours:D2}:{t.Minutes:D2}";
+
+    private static bool RowContains(IXLWorksheet ws, int row, int lastCol, string text)
+    {
+        for (int c = 1; c <= lastCol; c++)
+            if (ws.Cell(row, c).GetString().Contains(text, StringComparison.OrdinalIgnoreCase))
+                return true;
+        return false;
+    }
+
+    // ===================== DTO + Export =====================
+
+    private static TimesheetPersonDto ToDto(TimesheetPerson p) => new()
+    {
+        Id = p.Id,
+        Name = p.Name,
+        Stats = Deserialize<List<TimesheetStatDto>>(p.StatsJson) ?? new(),
+        Days = Deserialize<List<TimesheetDayDto>>(p.DaysJson) ?? new()
+    };
+
+    private static T? Deserialize<T>(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return default;
+        try { return JsonSerializer.Deserialize<T>(json); }
+        catch { return default; }
+    }
+
+    private static XLWorkbook BuildWorkbook(List<TimesheetPerson> people)
     {
         var wb = new XLWorkbook();
         var ws = wb.Worksheets.Add("ChamCong");
 
-        string[] headers = { "STT", "Họ tên", "Ngày", "Giờ vào", "Giờ ra", "Số giờ", "Ghi chú" };
+        string[] headers = { "Tên", "Ngày", "Thứ", "Giờ vào", "Giờ ra", "Trạng thái" };
         for (int c = 0; c < headers.Length; c++)
             ws.Cell(1, c + 1).Value = headers[c];
+        var hr = ws.Range(1, 1, 1, headers.Length);
+        hr.Style.Font.Bold = true;
+        hr.Style.Fill.BackgroundColor = XLColor.FromHtml("#21303B");
+        hr.Style.Font.FontColor = XLColor.White;
+        hr.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
 
-        var headerRange = ws.Range(1, 1, 1, headers.Length);
-        headerRange.Style.Font.Bold = true;
-        headerRange.Style.Fill.BackgroundColor = XLColor.FromHtml("#21303B");
-        headerRange.Style.Font.FontColor = XLColor.White;
-        headerRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-
-        int rowIndex = 2;
-        int stt = 1;
-        foreach (var t in rows)
+        int row = 2;
+        foreach (var p in people)
         {
-            ws.Cell(rowIndex, 1).Value = stt++;
-            ws.Cell(rowIndex, 2).Value = t.EmployeeName;
-            ws.Cell(rowIndex, 3).Value = t.WorkDate;
-            ws.Cell(rowIndex, 3).Style.DateFormat.Format = "dd/MM/yyyy";
-            ws.Cell(rowIndex, 4).Value = t.CheckIn ?? "";
-            ws.Cell(rowIndex, 5).Value = t.CheckOut ?? "";
-            ws.Cell(rowIndex, 6).Value = t.WorkHours;
-            ws.Cell(rowIndex, 7).Value = t.Note ?? "";
-            rowIndex++;
+            var days = Deserialize<List<TimesheetDayDto>>(p.DaysJson) ?? new();
+            foreach (var d in days)
+            {
+                ws.Cell(row, 1).Value = p.Name;
+                ws.Cell(row, 2).Value = d.Date;
+                ws.Cell(row, 3).Value = d.Weekday;
+                ws.Cell(row, 4).Value = d.CheckIn ?? "";
+                ws.Cell(row, 5).Value = d.CheckOut ?? "";
+                ws.Cell(row, 6).Value = d.Status ?? "";
+                row++;
+            }
         }
 
         ws.Columns().AdjustToContents();
         return wb;
     }
-
-    private static int? FindColumn(IXLRangeRow header, HashSet<int> used, params string[] keywords)
-    {
-        foreach (var cell in header.CellsUsed())
-        {
-            var col = cell.Address.ColumnNumber;
-            if (used.Contains(col)) continue;
-            var text = cell.GetString().Trim().ToLowerInvariant();
-            if (string.IsNullOrEmpty(text)) continue;
-            if (keywords.Any(k => text.Contains(k)))
-            {
-                used.Add(col);
-                return col;
-            }
-        }
-        return null;
-    }
-
-    private static DateTime? ReadDate(IXLCell cell)
-    {
-        if (cell.IsEmpty()) return null;
-        if (cell.DataType == XLDataType.DateTime)
-            return cell.GetDateTime();
-
-        var s = cell.GetString().Trim();
-        string[] formats = { "dd/MM/yyyy", "d/M/yyyy", "yyyy-MM-dd", "MM/dd/yyyy", "dd-MM-yyyy" };
-        if (DateTime.TryParseExact(s, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var d))
-            return d;
-        if (DateTime.TryParse(s, out var d2))
-            return d2;
-        return null;
-    }
-
-    private static string? ReadTime(IXLCell cell)
-    {
-        if (cell.IsEmpty()) return null;
-        try
-        {
-            if (cell.DataType == XLDataType.DateTime)
-                return cell.GetDateTime().ToString("HH:mm");
-            if (cell.DataType == XLDataType.TimeSpan)
-            {
-                var ts = cell.GetTimeSpan();
-                return $"{(int)ts.TotalHours:D2}:{ts.Minutes:D2}";
-            }
-        }
-        catch { /* rơi xuống đọc chuỗi */ }
-
-        var s = cell.GetString().Trim();
-        return string.IsNullOrEmpty(s) ? null : s;
-    }
-
-    private static double ReadHours(IXLCell cell)
-    {
-        if (cell.IsEmpty()) return 0;
-        if (cell.DataType == XLDataType.Number) return cell.GetDouble();
-        var s = cell.GetString().Trim().Replace(',', '.');
-        return double.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var v) ? v : 0;
-    }
-
-    private static TimesheetResponse ToResponse(TimesheetEntry t) => new()
-    {
-        Id = t.Id,
-        EmployeeName = t.EmployeeName,
-        WorkDate = t.WorkDate,
-        CheckIn = t.CheckIn,
-        CheckOut = t.CheckOut,
-        WorkHours = t.WorkHours,
-        Note = t.Note
-    };
 }

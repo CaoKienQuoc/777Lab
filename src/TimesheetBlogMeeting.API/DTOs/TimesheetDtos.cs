@@ -32,3 +32,28 @@ public class ImportResult
     public int Imported { get; set; }
     public List<string> Errors { get; set; } = new();
 }
+
+// ---- Báo cáo chấm công theo từng người (import từ máy chấm công) ----
+
+public class TimesheetStatDto
+{
+    public string Label { get; set; } = string.Empty;
+    public string Value { get; set; } = string.Empty;
+}
+
+public class TimesheetDayDto
+{
+    public string Date { get; set; } = string.Empty;     // "yyyy-MM-dd"
+    public string Weekday { get; set; } = string.Empty;  // "Thứ sáu"
+    public string? CheckIn { get; set; }                 // giờ vào sớm nhất
+    public string? CheckOut { get; set; }                // giờ ra muộn nhất
+    public string? Status { get; set; }                  // "LỄ" / "OFF" / "đi muộn"...
+}
+
+public class TimesheetPersonDto
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public List<TimesheetStatDto> Stats { get; set; } = new();
+    public List<TimesheetDayDto> Days { get; set; } = new();
+}
