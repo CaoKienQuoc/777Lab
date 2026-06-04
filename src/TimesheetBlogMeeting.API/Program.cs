@@ -75,6 +75,10 @@ builder.Services.AddControllers();
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<IRealtimeNotifier, RealtimeNotifier>();
 
+// Background job: tự động cộng phép đầu mỗi tháng
+builder.Services.AddSingleton<LeaveMonthlyRenewalService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<LeaveMonthlyRenewalService>());
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", p => p
@@ -159,6 +163,15 @@ BEGIN
         [StatsJson] nvarchar(max) NOT NULL,
         [DaysJson] nvarchar(max) NOT NULL,
         CONSTRAINT [PK_TimesheetPeople] PRIMARY KEY ([Id])
+    );
+END
+IF OBJECT_ID(N'[LeaveRenewalLogs]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [LeaveRenewalLogs] (
+        [Id] int NOT NULL IDENTITY(1,1),
+        [YearMonth] nvarchar(7) NOT NULL,
+        [RanAt] datetime2 NOT NULL,
+        CONSTRAINT [PK_LeaveRenewalLogs] PRIMARY KEY ([Id])
     );
 END");
 

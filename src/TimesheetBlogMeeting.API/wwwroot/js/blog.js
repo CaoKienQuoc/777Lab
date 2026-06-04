@@ -45,10 +45,12 @@ function renderBlogList(posts) {
       ? `<div class="blog-thumb"><img src="${escapeHtml(p.imageUrl)}" alt="" /></div>`
       : `<div class="blog-thumb"><span class="ph">🗞️</span></div>`;
 
-    // Ưu tiên hiển thị "Thời Gian" (lịch); nếu không có thì mới hiện ngày tạo
-    const displayDate = p.scheduledAt
-      ? `<span>📅 ${t('schedulePost')}: ${formatDateTime(p.scheduledAt)}</span>`
-      : `<span>${formatDateTime(p.createdAt)}</span>`;
+    // Bỏ tên tác giả; chỉ hiển thị "Đăng lúc" (luôn có) và "Thời Gian" (nếu có lịch).
+    // Dấu chấm làm dải phân cách GIỮA các mục (không bị dấu chấm thừa ở đầu dòng).
+    const dateParts = [];
+    if (p.scheduledAt) dateParts.push(`<span>📅 ${t('schedulePost')}: ${formatDateTime(p.scheduledAt)}</span>`);
+    dateParts.push(`<span>${t('postedAt')}: ${formatDateTime(p.createdAt)}</span>`);
+    const displayDate = dateParts.join('<span class="dot"></span>');
 
     const actions = canEdit
       ? `<div class="blog-actions">
@@ -64,8 +66,6 @@ function renderBlogList(posts) {
           <h3>${escapeHtml(p.title)}</h3>
           <div class="blog-excerpt">${renderRichContent(p.content)}</div>
           <div class="blog-meta">
-            <span>${escapeHtml(p.authorName)}</span>
-            <span class="dot"></span>
             ${displayDate}
           </div>
         </div>
@@ -114,27 +114,28 @@ async function openBlogDetail(id) {
   try {
     const p = await api('/api/blog/' + id);
     const img = p.imageUrl ? `<img class="post-image" src="${escapeHtml(p.imageUrl)}" alt="" />` : '';
-    // Ẩn ngày tạo (created) cho gọn; ưu tiên "Thời Gian" (lịch), không có thì mới hiện ngày tạo
-    const dateLine = p.scheduledAt
-      ? `📅 ${t('schedulePost')}: ${formatDateTime(p.scheduledAt)}`
-      : formatDateTime(p.createdAt);
+    // Luôn hiển thị "Đăng lúc" (ngày tạo); nếu có "Thời Gian" (lịch) thì hiển thị thêm.
+    const scheduledLine = p.scheduledAt ? `📅 ${t('schedulePost')}: ${formatDateTime(p.scheduledAt)}` : '';
+    const createdLine = `${t('postedAt')}: ${formatDateTime(p.createdAt)}`;
     const body = `
       <div class="post-detail">
         <h2>${escapeHtml(p.title)}</h2>
-        <div class="post-meta">
-          <span class="post-author">${escapeHtml(p.authorName)}</span>
-          <span class="post-date">${dateLine}</span>
-        </div>
         <div class="post-body">${renderRichContent(p.content)}</div>
         ${img}
+        <div class="post-meta post-meta-bottom">
+          ${scheduledLine ? `<span class="post-date">${scheduledLine}</span>` : ''}
+          <span class="post-date">${createdLine}</span>
+        </div>
       </div>`;
-    openModal(t('postDetail'), body, `<button class="btn" onclick="closeModal()">${t('close')}</button>`, true);
+    openModal(t('postDetail'), body, `<button class="btn" onclick="closeModal()">${t('close')}</button>`, 'xwide');
   } catch (err) {
     showToast(err.message, 'err');
   }
 }
 
 let _blogImageFile = null;
+// Ngày lên lịch gốc khi mở form sửa — cho phép giữ nguyên ngày đã qua mà không bị chặn.
+let _blogOrigScheduledDate = '';
 
 async function openBlogForm(id) {
   _blogImageFile = null;
@@ -143,6 +144,7 @@ async function openBlogForm(id) {
     try { post = await api('/api/blog/' + id); }
     catch (err) { showToast(err.message, 'err'); return; }
   }
+  _blogOrigScheduledDate = post && post.scheduledAt ? toDatetimeLocal(post.scheduledAt).slice(0, 10) : '';
 
   const existingImg = post && post.imageUrl
     ? `<img class="file-preview" id="blog-img-preview" src="${escapeHtml(post.imageUrl)}" />`
@@ -161,7 +163,7 @@ async function openBlogForm(id) {
     <div class="field">
       <label for="blog-scheduled-date">${t('schedulePost')}</label>
       <div class="schedule-row">
-        <input type="date" id="blog-scheduled-date" class="schedule-date" value="${post && post.scheduledAt ? toDatetimeLocal(post.scheduledAt).slice(0, 10) : ''}" />
+        <input type="date" id="blog-scheduled-date" class="schedule-date" min="${toYMD(new Date())}" value="${post && post.scheduledAt ? toDatetimeLocal(post.scheduledAt).slice(0, 10) : ''}" />
         <input type="time" id="blog-scheduled-time" class="schedule-time" step="60" value="${post && post.scheduledAt ? toDatetimeLocal(post.scheduledAt).slice(11) : ''}" />
       </div>
     </div>
@@ -298,6 +300,12 @@ async function saveBlog(id) {
   const scheduledDate = document.getElementById('blog-scheduled-date');
   const scheduledTime = document.getElementById('blog-scheduled-time');
   if (scheduledDate && scheduledDate.value) {
+    // Chặn lên lịch vào ngày đã qua (so sánh chuỗi YYYY-MM-DD là đúng thứ tự thời gian).
+    // Khi sửa bài cũ, cho phép giữ nguyên ngày gốc dù ngày đó đã qua.
+    if (scheduledDate.value < toYMD(new Date()) && scheduledDate.value !== _blogOrigScheduledDate) {
+      showToast(t('scheduleNoPast'), 'err');
+      return;
+    }
     fd.append('ScheduledDate', scheduledDate.value);
     fd.append('ScheduledTime', scheduledTime && scheduledTime.value ? scheduledTime.value : '00:00');
   }
@@ -404,9 +412,14 @@ async function checkNewBlogs(isInitial) {
   // Lần đầu mở app mà chưa có mốc -> coi như đã đọc hết bài hiện có
   if (isInitial && !localStorage.getItem(BLOG_SEEN_KEY)) { markBlogSeen(); return; }
 
-  // Đang ở tab Blog: cập nhật danh sách nếu có bài mới rồi đánh dấu đã đọc
+  // Đang ở tab Blog: vẫn đẩy bài mới vào chuông, cập nhật danh sách rồi đánh dấu đã đọc.
+  // (push gated theo mốc đã đọc + chống trùng theo id nên không gây thông báo lặp/flood;
+  //  bỏ qua lần chạy đầu isInitial để không đẩy hàng loạt bài cũ.)
   if (document.getElementById('view-blog').classList.contains('active')) {
-    if (!isInitial && countUnseenBlogs(posts) > 0) renderBlogList(posts);
+    if (!isInitial) {
+      pushBlogNotifs(posts);
+      if (countUnseenBlogs(posts) > 0) renderBlogList(posts);
+    }
     markBlogSeen();
     return;
   }
@@ -421,11 +434,17 @@ async function checkNewBlogs(isInitial) {
 }
 
 // Xử lý khi server báo blog thay đổi (gọi từ SignalR ở app.js).
-// Đang xem tab Blog -> tải lại danh sách ngay (gồm cả XOÁ/sửa, không chỉ bài mới).
-// Không xem -> cập nhật badge + toast.
-function onBlogChanged() {
+// Đang xem tab Blog -> vẫn đẩy bài mới vào chuông RỒI tải lại danh sách
+//                      (gồm cả XOÁ/sửa, không chỉ bài mới).
+// Không xem -> cập nhật badge + toast (checkNewBlogs đã tự đẩy chuông).
+async function onBlogChanged() {
   if (document.getElementById('view-blog').classList.contains('active')) {
-    loadBlogs();
+    // Phải push TRƯỚC khi render vì renderBlogList sẽ markBlogSeen (nâng mốc đã đọc);
+    // nếu render trước thì bài mới bị coi là đã đọc và không vào chuông nữa.
+    let posts;
+    try { posts = await api('/api/blog'); } catch { return; }
+    pushBlogNotifs(posts);
+    renderBlogList(posts);
   } else {
     checkNewBlogs(false);
   }

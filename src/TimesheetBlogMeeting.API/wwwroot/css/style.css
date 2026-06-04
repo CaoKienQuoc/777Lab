@@ -311,13 +311,15 @@ textarea { resize: vertical; min-height: 120px; line-height: 1.6; }
 .blog-row-actions .btn { font-size: 30px; padding: 15px 18px; }
 
 /* Bài viết chi tiết (trong modal) */
-.post-detail h2 { font-size: 28px; line-height: 1.25; }
+.post-detail h2 { font-size: 28px; line-height: 1.25; margin-bottom: 14px; }
 .post-detail .post-meta {
   display: flex; flex-wrap: wrap; align-items: center; column-gap: 14px; row-gap: 4px;
-  color: var(--muted-text); font-size: 13px; margin: 10px 0 18px;
+  color: var(--muted-text); font-size: 15px; margin: 10px 0 18px;
 }
 .post-detail .post-meta .post-author { font-weight: 600; color: var(--ink-soft); }
 .post-detail .post-meta .post-date { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+/* Meta (Thời Gian / Đăng lúc) đặt ở cuối, sau nội dung — có đường kẻ ngăn cách phía trên */
+.post-detail .post-meta-bottom { margin: 18px 0 0; padding-top: 14px; border-top: 1px solid var(--line); }
 .post-detail .post-image { width: 100%; border-radius: var(--radius); margin-bottom: 18px; border: 1px solid var(--line); }
 .post-detail .post-body { font-size: 15.5px; line-height: 1.75; color: var(--ink-soft); word-break: break-word; }
 .post-detail .post-body img { max-width: 100%; height: auto; border-radius: var(--radius-sm); }
@@ -499,6 +501,9 @@ table.data td:not(.num), table.data th:not(.num) { text-align: center; }
   animation: pop .2s ease;
 }
 .modal.wide { max-width: 720px; }
+.modal.xwide { max-width: 900px; }
+/* Popup chi tiết blog: cao hơn — phần thân tối thiểu 70% chiều cao màn hình */
+.modal.xwide .modal-body { min-height: 70vh; }
 @keyframes pop { from { opacity: 0; transform: scale(.96) translateY(8px); } to { opacity: 1; transform: none; } }
 .modal-head {
   display: flex; align-items: center; justify-content: space-between;

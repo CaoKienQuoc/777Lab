@@ -54,6 +54,16 @@ const JA_HEADER_MAP = {
 // Hậu tố tham chiếu công thức ở cuối tiêu đề: " (1)", " (2)", " (1+2) - (3)"...
 const HEADER_REF_SUFFIX = /\s*\([\d+\s]+\)(?:\s*-\s*\([\d+\s]+\))*$/;
 
+// Nhận diện vai trò cột theo hậu tố công thức để auto-calc "Còn lại" trong form
+function getFormulaRole(header) {
+  const h = header.trim();
+  if (/\(1\+2\)/.test(h)) return 'result';           // Còn lại (1+2) - (3)
+  if (/\(\s*1\s*\)\s*$/.test(h)) return 'col1';      // Tồn (1)
+  if (/\(\s*2\s*\)\s*$/.test(h)) return 'col2';      // Tổng phép (2)
+  if (/\(\s*3\s*\)\s*$/.test(h) && !/1\+2/.test(h)) return 'col3'; // Ngày nghỉ đã sd (3)
+  return null;
+}
+
 // Dịch theo từ khoá cho cột có cách viết không cố định (năm đổi theo kỳ, khoảng trắng/ngoặc lệch)
 const JA_KEYWORD_RULES = [
   { test: k => k.startsWith('tồn'), ja: '繰越' },
@@ -225,6 +235,36 @@ function openLeaveForm(id) {
 
   openModal(isEdit ? t('editLeaveTitle') : t('addLeaveTitle'), fields, foot, true);
   document.getElementById('lv-save').addEventListener('click', () => saveLeave(id));
+
+  // Auto-tính "Còn lại" khi người dùng chỉnh cột (1), (2), hoặc (3)
+  setupLeaveFormula(cols);
+}
+
+function setupLeaveFormula(cols) {
+  // Lập bản đồ vai trò -> position của cột
+  const fm = {}; // 'col1'|'col2'|'col3'|'result' -> position
+  cols.forEach(c => {
+    const role = getFormulaRole(c.header);
+    if (role) fm[role] = c.position;
+  });
+
+  if (fm.col1 === undefined || fm.col2 === undefined ||
+      fm.col3 === undefined || fm.result === undefined) return;
+
+  const resEl = document.getElementById('lvc_' + fm.result);
+  if (resEl) resEl.readOnly = true;
+
+  const recalc = () => {
+    const v1 = parseFloat(document.getElementById('lvc_' + fm.col1)?.value) || 0;
+    const v2 = parseFloat(document.getElementById('lvc_' + fm.col2)?.value) || 0;
+    const v3 = parseFloat(document.getElementById('lvc_' + fm.col3)?.value) || 0;
+    if (resEl) resEl.value = Math.round((v1 + v2 - v3) * 1000) / 1000;
+  };
+
+  ['col1', 'col2', 'col3'].forEach(role => {
+    const el = document.getElementById('lvc_' + fm[role]);
+    if (el) el.addEventListener('input', recalc);
+  });
 }
 
 async function saveLeave(id) {

@@ -35,11 +35,13 @@ public class LeaveController : ControllerBase
 
     private readonly AppDbContext _db;
     private readonly IRealtimeNotifier _rt;
+    private readonly LeaveMonthlyRenewalService _renewal;
 
-    public LeaveController(AppDbContext db, IRealtimeNotifier rt)
+    public LeaveController(AppDbContext db, IRealtimeNotifier rt, LeaveMonthlyRenewalService renewal)
     {
         _db = db;
         _rt = rt;
+        _renewal = renewal;
     }
 
     // ---- Ai cũng xem được ----
@@ -136,6 +138,17 @@ public class LeaveController : ControllerBase
         await _db.SaveChangesAsync();
         await _rt.NotifyAsync("leave", "deleted");
         return NoContent();
+    }
+
+    /// <summary>
+    /// Trigger thủ công cộng phép tháng (Admin). force=true để chạy lại dù đã cộng tháng này.
+    /// </summary>
+    [HttpPost("monthly-renewal")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> MonthlyRenewal([FromQuery] bool force = false)
+    {
+        var (updated, message) = await _renewal.DoRenewalAsync(force);
+        return Ok(new { updated, message });
     }
 
     /// <summary>Xoá sạch bảng (cả cột lẫn dòng).</summary>

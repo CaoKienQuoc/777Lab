@@ -128,7 +128,10 @@ function openModal(title, bodyHtml, footHtml, wide) {
   document.getElementById('modal-title').textContent = title;
   document.getElementById('modal-body').innerHTML = bodyHtml;
   document.getElementById('modal-foot').innerHTML = footHtml || '';
-  document.getElementById('modal-box').classList.toggle('wide', !!wide);
+  // wide = true -> rộng (720px); wide = 'xwide' -> rất rộng (vd popup chi tiết blog).
+  const box = document.getElementById('modal-box');
+  box.classList.toggle('xwide', wide === 'xwide');
+  box.classList.toggle('wide', !!wide && wide !== 'xwide');
   overlay.classList.remove('hidden');
 }
 function closeModal() {

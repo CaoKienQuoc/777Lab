@@ -14,6 +14,7 @@ public class AppDbContext : DbContext
     public DbSet<Meeting> Meetings => Set<Meeting>();
     public DbSet<LeaveColumn> LeaveColumns => Set<LeaveColumn>();
     public DbSet<LeaveRow> LeaveRows => Set<LeaveRow>();
+    public DbSet<LeaveRenewalLog> LeaveRenewalLogs => Set<LeaveRenewalLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
