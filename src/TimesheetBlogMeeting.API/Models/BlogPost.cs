@@ -24,4 +24,7 @@ public class BlogPost
     public User? Author { get; set; }
 
     public DateTime CreatedAt { get; set; } = TimeHelper.VnNow;
+
+    // Thời gian lên lịch đăng bài; null = đăng ngay
+    public DateTime? ScheduledAt { get; set; }
 }

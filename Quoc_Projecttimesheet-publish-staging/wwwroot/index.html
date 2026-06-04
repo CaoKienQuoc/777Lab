@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>777LAB</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="preconnect" href="https://fonts.googleapis" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css?v=8" />
+  <style>
+.leave-search-wrapper {
+  display: flex; align-items: center;
+}
+.ts-search-wrapper {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.leave-search-input {
+  padding: 6px 10px; border: 1px solid var(--line-strong);
+  border-radius: 4px; font-size: 13px; width: 180px;
+  background: var(--surface); color: var(--ink);
+}
+/* Combobox/search ở Chấm công: cùng kích thước với nút (.btn) — cao 40px, font 14 */
+.ts-search-input {
+  height: 40px; box-sizing: border-box;
+  padding: 0 14px; border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm); font-size: 14px;
+  font-family: var(--font-sans); cursor: pointer;
+  background: var(--surface); color: var(--ink);
+}
+#view-timesheet .view-actions .btn { height: 40px; box-sizing: border-box; }
+.leave-search-input::placeholder, .ts-search-input::placeholder {
+  color: var(--muted-text);
+}
+.lang-flag {
+  width: 28px; height: 20px; cursor: pointer; margin-left: 12px; border-radius: 3px;
+  border: 1px solid var(--line); transition: all .15s;
+}
+.lang-flag:hover { border-color: var(--accent); transform: scale(1.05); }
+</style>
+</head>
+<body>
+  <!-- ===== Header ===== -->
+  <header class="app-header">
+    <div class="app-header-inner">
+      <div class="app-logo">
+        <img class="logo-img" src="/img/logo.png" alt="777LAB" />
+      </div>
+      <div class="app-mascots" aria-hidden="true">
+        <img src="/img/chars-sm/Char%201.2.png" alt="" />
+        <img src="/img/chars-sm/Char%202.4.png" alt="" />
+        <img src="/img/chars-sm/Char%203.1_pink.png" alt="" />
+        <img src="/img/chars-sm/Char%204.2.png" alt="" />
+        <img src="/img/chars-sm/Char%205.1.1.png" alt="" />
+      </div>
+      <div class="app-user">
+          <div class="notif-wrap">
+            <button class="notif-bell" id="notif-bell" type="button" aria-label="Thông báo">
+              <span class="notif-ico">🔔</span>
+              <span class="notif-count hidden" id="notif-count">0</span>
+            </button>
+            <div class="notif-panel hidden" id="notif-panel">
+              <div class="notif-head">
+                <span id="notif-title">Thông báo</span>
+                <button class="notif-markall" id="notif-mark-all" type="button">Đánh dấu đã đọc</button>
+              </div>
+              <div class="notif-list" id="notif-list"></div>
+            </div>
+          </div>
+          <div class="who">
+              <b id="user-fullname">—</b><br />
+              <span id="user-role-tag" class="role-tag role-customer">Customer</span>
+          </div>
+          <img id="lang-flag" class="lang-flag" src="https://flagcdn.com/vn.svg" alt="VI" title="Chuyển sang Nhật" />
+          <button class="logout-btn" id="logout-btn">Đăng xuất</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== Tabs ===== -->
+  <nav class="tabbar">
+      <div class="tabbar-inner">
+          <button class="tab active" data-view="blog" id="tab-blog"><span class="ico"><img src="/img/chars-sm/Char 1.2.png" width="20" height="20"></span> Blog</button>
+          <button class="tab" data-view="leave"><span class="ico"><img src="/img/chars-sm/Char 4.2.png" width="20" height="20"></span> Phép tồn</button>
+          <button class="tab" data-view="timesheet"><span class="ico"><img src="/img/chars-sm/Char 3.1_pink.png" width="20" height="20"></span> Chấm công</button>
+          <button class="tab" data-view="meeting"><span class="ico"><img src="/img/chars-sm/Char 2.1.png" width="20" height="20"></span> Lịch họp</button>
+          <button class="tab hidden" data-view="users" id="tab-users"><span class="ico">👥</span> Người dùng</button>
+      </div>
+  </nav>
+
+  <main class="container">
+    <!-- ===== View: Blog ===== -->
+    <section class="view active" id="view-blog">
+      <div class="view-head">
+      <div class="titles">
+        <h2 data-i18n="blogAndPosts">Blog & Bài viết</h2>
+      </div>
+      <div class="view-actions">
+        <button class="btn btn-primary" id="btn-new-blog" data-i18n="addNew">+ Đăng bài mới</button>
+      </div>
+      </div>
+      <div id="blog-container">
+        <div class="spinner"></div>
+      </div>
+    </section>
+
+    <!-- ===== View: Timesheet ===== -->
+    <section class="view" id="view-timesheet">
+      <div class="view-head">
+      <div class="titles">
+        <h2 data-i18n="timesheetTitle">Bảng chấm công</h2>
+        <p id="timesheet-sub" class="view-sub"></p>
+      </div>
+      <div class="ts-search-wrapper" id="ts-search-container">
+        <input type="text" id="ts-search-input" data-i18n-placeholder="tsSearchPlaceholder" class="ts-search-input" />
+      </div>
+        <div class="view-actions" id="timesheet-actions"></div>
+      </div>
+      <div id="timesheet-container">
+        <div class="spinner"></div>
+      </div>
+    </section>
+
+    <!-- ===== View: Leave balance (Phép tồn) ===== -->
+    <section class="view" id="view-leave">
+      <div class="view-head">
+      <div class="titles">
+        <h2 data-i18n="leaveTitle">Phép tồn</h2>
+        <p id="leave-sub" class="view-sub"></p>
+      </div>
+      <div class="leave-search-wrapper" id="leave-search-container">
+        <input type="text" id="leave-search-input" data-i18n-placeholder="searchPlaceholder" class="leave-search-input" />
+      </div>
+        <div class="view-actions" id="leave-actions"></div>
+      </div>
+      <div id="leave-container">
+        <div class="spinner"></div>
+      </div>
+    </section>
+
+    <!-- ===== View: Meeting ===== -->
+    <section class="view" id="view-meeting">
+      <div class="view-head">
+      <div class="titles">
+        <h2 data-i18n="meetingTitle">Đăng ký lịch họp</h2>
+      </div>
+      </div>
+      <div id="meeting-container">
+        <div class="spinner"></div>
+      </div>
+    </section>
+
+    <!-- ===== View: Users (admin) ===== -->
+    <section class="view" id="view-users">
+      <div class="view-head">
+      <div class="titles">
+        <h2 data-i18n="usersTitle">Quản lý người dùng</h2>
+      </div>
+      <div class="view-actions" id="users-actions">
+        <button class="btn btn-primary" id="btn-new-user" data-i18n="addNewUser">+ Thêm người dùng</button>
+      </div>
+      </div>
+      <div id="users-container">
+        <div class="spinner"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ===== Modal ===== -->
+  <div class="modal-overlay hidden" id="modal-overlay">
+    <div class="modal" id="modal-box">
+      <div class="modal-head">
+        <h3 id="modal-title">—</h3>
+        <button class="modal-close" id="modal-close">&times;</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-foot" id="modal-foot"></div>
+    </div>
+  </div>
+
+  <div id="toast-stack"></div>
+
+  <script src="/js/lib/signalr.min.js"></script>
+  <script src="/js/api.js?v=4"></script>
+  <script src="/js/app.js?v=7"></script>
+  <script src="/js/blog.js?v=5"></script>
+  <script src="/js/timesheet.js?v=11"></script>
+  <script src="/js/leave.js?v=4"></script>
+  <script src="/js/meeting.js?v=4"></script>
+  <script src="/js/users.js?v=4"></script>
+</body>
+</html>

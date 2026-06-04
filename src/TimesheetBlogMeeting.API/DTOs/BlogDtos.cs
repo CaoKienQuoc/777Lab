@@ -17,6 +17,10 @@ public class BlogFormRequest
 
     // Khi cập nhật: gửi true nếu muốn xoá ảnh hiện tại
     public bool RemoveImage { get; set; } = false;
+
+    // Ngày (YYYY-MM-DD) và giờ (HH:mm) từ form, controller tự gộp thành DateTime
+    public string? ScheduledDate { get; set; }
+    public string? ScheduledTime { get; set; }
 }
 
 public class BlogResponse
@@ -28,4 +32,5 @@ public class BlogResponse
     public Guid AuthorId { get; set; }
     public string AuthorName { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
+    public DateTime? ScheduledAt { get; set; }
 }

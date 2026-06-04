@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -45,14 +46,22 @@ public class BlogController : ControllerBase
     private bool IsAdmin => User.IsInRole("Admin");
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<BlogResponse>>> GetAll()
+    public async Task<ActionResult<IEnumerable<BlogResponse>>> GetAll([FromQuery] DateTime? scheduledDate)
     {
-        var posts = await _db.BlogPosts
-            .Include(b => b.Author)
-            .OrderByDescending(b => b.CreatedAt)
-            .Select(b => ToResponse(b))
-            .ToListAsync();
+        IQueryable<BlogPost> query = _db.BlogPosts.Include(b => b.Author);
 
+        if (scheduledDate.HasValue)
+        {
+            var targetDate = scheduledDate.Value.Date;
+            query = query.Where(b => b.ScheduledAt.HasValue && b.ScheduledAt.Value.Date == targetDate)
+                         .OrderBy(b => b.ScheduledAt);
+        }
+        else
+        {
+            query = query.OrderByDescending(b => b.CreatedAt);
+        }
+
+        var posts = await query.Select(b => ToResponse(b)).ToListAsync();
         return Ok(posts);
     }
 
@@ -81,7 +90,8 @@ public class BlogController : ControllerBase
             Content = request.Content,
             ImageUrl = imageUrl,
             AuthorId = CurrentUserId,
-            CreatedAt = TimeHelper.VnNow
+            CreatedAt = TimeHelper.VnNow,
+            ScheduledAt = ParseScheduledAt(request.ScheduledDate, request.ScheduledTime)
         };
 
         _db.BlogPosts.Add(post);
@@ -105,6 +115,7 @@ public class BlogController : ControllerBase
 
         post.Title = request.Title.Trim();
         post.Content = request.Content;
+        post.ScheduledAt = ParseScheduledAt(request.ScheduledDate, request.ScheduledTime);
 
         if (request.Image != null)
         {
@@ -143,6 +154,17 @@ public class BlogController : ControllerBase
     }
 
     // ---- Helpers ----
+
+    private static DateTime? ParseScheduledAt(string? date, string? time)
+    {
+        if (string.IsNullOrWhiteSpace(date)) return null;
+        var dateStr = date.Trim();
+        var timeStr = string.IsNullOrWhiteSpace(time) ? "00:00" : time.Trim();
+        if (DateTime.TryParseExact($"{dateStr} {timeStr}", "yyyy-MM-dd HH:mm",
+            CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt))
+            return dt;
+        return null;
+    }
 
     private string GetUploadsDir()
     {
@@ -204,6 +226,7 @@ public class BlogController : ControllerBase
         ImageUrl = b.ImageUrl,
         AuthorId = b.AuthorId,
         AuthorName = b.Author?.FullName ?? "",
-        CreatedAt = b.CreatedAt
+        CreatedAt = b.CreatedAt,
+        ScheduledAt = b.ScheduledAt
     };
 }

@@ -20,6 +20,7 @@ public class TimesheetPerson
     // JSON: [ { "label": "Ngày làm", "value": "31" }, ... ]
     public string StatsJson { get; set; } = "[]";
 
-    // JSON: [ { "date": "2026-05-01", "weekday": "Thứ sáu", "checkIn": "07:59", "checkOut": "17:10", "status": "đi muộn" }, ... ]
+    // JSON: [ { "date": "2026-05-01", "weekday": "Thứ sáu", "morningIn": "07:59", "morningOut": "12:00",
+    //          "afternoonIn": "13:00", "afternoonOut": "17:10", "status": "đi muộn" }, ... ]
     public string DaysJson { get; set; } = "[]";
 }

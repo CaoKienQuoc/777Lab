@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -124,6 +125,11 @@ using (var scope = app.Services.CreateScope())
     // Bảng "Phép tồn" dùng cột ĐỘNG: 1 bảng định nghĩa cột + 1 bảng dữ liệu dòng (JSON).
     // Đồng thời bỏ bảng LeaveBalances cũ (thiết kế cột cố định) nếu còn tồn tại.
     db.Database.ExecuteSqlRaw(@"
+IF COL_LENGTH(N'[BlogPosts]', N'ScheduledAt') IS NULL
+BEGIN
+    ALTER TABLE [BlogPosts] ADD [ScheduledAt] datetime2 NULL;
+END");
+    db.Database.ExecuteSqlRaw(@"
 IF OBJECT_ID(N'[LeaveBalances]', N'U') IS NOT NULL DROP TABLE [LeaveBalances];
 IF OBJECT_ID(N'[LeaveColumns]', N'U') IS NULL
 BEGIN
@@ -171,6 +177,18 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+// Chạy phía sau reverse proxy (nginx): đọc các header X-Forwarded-* để app biết
+// scheme/IP thật của client. Đặt trước mọi middleware khác trong pipeline.
+var fwdOptions = new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+};
+// Mặc định chỉ tin proxy ở localhost. Xoá danh sách = tin proxy ở mọi IP
+// (tiện khi nginx nằm ở máy khác). Muốn chặt hơn: thêm IP nginx vào KnownProxies.
+fwdOptions.KnownNetworks.Clear();
+fwdOptions.KnownProxies.Clear();
+app.UseForwardedHeaders(fwdOptions);
 
 // Phục vụ frontend tĩnh trong wwwroot (login.html, index.html, css, js, uploads)
 app.UseDefaultFiles();

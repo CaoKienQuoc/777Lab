@@ -4,19 +4,32 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>777LAB</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="preconnect" href="https://fonts.googleapis" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/css/style.css?v=4" />
+  <link rel="stylesheet" href="/css/style.css?v=10" />
   <style>
 .leave-search-wrapper {
   display: flex; align-items: center;
 }
-.leave-search-input, .ts-search-input {
+.ts-search-wrapper {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.leave-search-input {
   padding: 6px 10px; border: 1px solid var(--line-strong);
   border-radius: 4px; font-size: 13px; width: 180px;
   background: var(--surface); color: var(--ink);
 }
+/* Combobox/search ở Chấm công: cùng kích thước với nút (.btn) — cao 40px, font 14 */
+.ts-search-input {
+  height: 40px; box-sizing: border-box;
+  padding: 0 14px; border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm); font-size: 14px;
+  font-family: var(--font-sans); cursor: pointer;
+  background: var(--surface); color: var(--ink);
+}
+#view-timesheet .view-actions .btn { height: 40px; box-sizing: border-box; }
 .leave-search-input::placeholder, .ts-search-input::placeholder {
   color: var(--muted-text);
 }
@@ -32,7 +45,7 @@
   <header class="app-header">
     <div class="app-header-inner">
       <div class="app-logo">
-        <span class="mark">777<em>LAB</em></span>
+        <img class="logo-img" src="/img/logo.png" alt="777LAB" />
       </div>
       <div class="app-mascots" aria-hidden="true">
         <img src="/img/chars-sm/Char%201.2.png" alt="" />
@@ -42,12 +55,25 @@
         <img src="/img/chars-sm/Char%205.1.1.png" alt="" />
       </div>
       <div class="app-user">
-        <div class="who">
-          <b id="user-fullname">—</b><br />
-          <span id="user-role-tag" class="role-tag role-customer">Customer</span>
-        </div>
-        <img id="lang-flag" class="lang-flag" src="https://flagcdn.com/vn.svg" alt="VI" title="Chuyển sang Nhật" />
-        <button class="logout-btn" id="logout-btn">Đăng xuất</button>
+          <div class="notif-wrap">
+            <button class="notif-bell" id="notif-bell" type="button" aria-label="Thông báo">
+              <span class="notif-ico">🔔</span>
+              <span class="notif-count hidden" id="notif-count">0</span>
+            </button>
+            <div class="notif-panel hidden" id="notif-panel">
+              <div class="notif-head">
+                <span id="notif-title">Thông báo</span>
+                <button class="notif-markall" id="notif-mark-all" type="button">Đánh dấu đã đọc</button>
+              </div>
+              <div class="notif-list" id="notif-list"></div>
+            </div>
+          </div>
+          <div class="who">
+              <b id="user-fullname">—</b><br />
+              <span id="user-role-tag" class="role-tag role-customer">Customer</span>
+          </div>
+          <img id="lang-flag" class="lang-flag" src="https://flagcdn.com/vn.svg" alt="VI" title="Chuyển sang Nhật" />
+          <button class="logout-btn" id="logout-btn">Đăng xuất</button>
       </div>
     </div>
   </header>
@@ -157,9 +183,9 @@
 
   <script src="/js/lib/signalr.min.js"></script>
   <script src="/js/api.js?v=4"></script>
-  <script src="/js/app.js?v=4"></script>
-  <script src="/js/blog.js?v=4"></script>
-  <script src="/js/timesheet.js?v=4"></script>
+  <script src="/js/app.js?v=7"></script>
+  <script src="/js/blog.js?v=7"></script>
+  <script src="/js/timesheet.js?v=11"></script>
   <script src="/js/leave.js?v=4"></script>
   <script src="/js/meeting.js?v=4"></script>
   <script src="/js/users.js?v=4"></script>

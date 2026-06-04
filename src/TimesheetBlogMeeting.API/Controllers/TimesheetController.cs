@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using ClosedXML.Excel;
@@ -15,7 +16,8 @@ namespace TimesheetBlogMeeting.API.Controllers;
 /// Bảng chấm công — import từ file báo cáo máy chấm công (CHECKIN-OUT).
 /// Mỗi người là 1 block: dòng "Tên:..", dòng thống kê, rồi lịch theo ngày (2 cột
 /// nửa tháng, mỗi ngày tới 3 ca vào/ra). Khi hiển thị: chọn người trong combobox
-/// để xem thống kê + bảng theo ngày (giờ vào sớm nhất, giờ ra muộn nhất, trạng thái).
+/// để xem thống kê + bảng theo ngày, tách buổi sáng / buổi chiều (vào làm – ra nghỉ)
+/// và trạng thái (LỄ / OFF / đi muộn / về sớm).
 /// - Mọi người dùng đã đăng nhập: chỉ XEM và xuất Excel.
 /// - Admin: import (thay thế toàn bộ) và xoá.
 /// </summary>
@@ -106,58 +108,90 @@ public class TimesheetController : ControllerBase
         return Ok(new ImportResult { Imported = people.Count });
     }
 
-    // ===================== Parse báo cáo =====================
+        // ===================== Parse báo cáo =====================
 
-    private static List<TimesheetPerson> ParseReport(XLWorkbook wb)
-    {
-        var people = new List<TimesheetPerson>();
-        int position = 0;
-
-        foreach (var ws in wb.Worksheets)
+        private static List<TimesheetPerson> ParseReport(XLWorkbook wb)
         {
-            var used = ws.RangeUsed();
-            if (used == null) continue;
-            int firstRow = used.FirstRow().RowNumber();
-            int lastRow = used.LastRow().RowNumber();
-            int lastCol = Math.Min(used.LastColumn().ColumnNumber(), 30);
+            var people = new List<TimesheetPerson>();
+            int position = 0;
 
-            int r = firstRow;
-            while (r <= lastRow)
+            foreach (var ws in wb.Worksheets)
             {
-                if (!TryGetName(ws, r, lastCol, out var name)) { r++; continue; }
+                var used = ws.RangeUsed();
+                if (used == null) continue;
+                int firstRow = used.FirstRow().RowNumber();
+                int lastRow = used.LastRow().RowNumber();
+                int lastCol = Math.Min(used.LastColumn().ColumnNumber(), 30);
 
-                int year = FindYear(ws, r, lastCol);
-                var stats = ParseStats(ws, r + 1, lastCol);
-
-                // Tiêu đề bảng ở r+2, dữ liệu bắt đầu r+3
-                var days = new List<TimesheetDayDto>();
-                int dr = r + 3;
-                while (dr <= lastRow)
+                int r = firstRow;
+                while (r <= lastRow)
                 {
-                    if (TryGetName(ws, dr, lastCol, out _)) break;             // sang người mới
-                    if (RowContains(ws, dr, lastCol, "Chữ ký")) { dr++; break; } // hết block
+                    if (!TryGetName(ws, r, lastCol, out var name)) { r++; continue; }
 
-                    ParseDayHalf(ws, dr, 2, year, days);   // nửa trái: cột 2..9
-                    ParseDayHalf(ws, dr, 10, year, days);  // nửa phải: cột 10..17
-                    dr++;
+                    int year = FindYear(ws, r, lastCol);
+                    var stats = ParseStats(ws, r + 1, lastCol);
+
+                    // Tiêu đề bảng ở r+2, dữ liệu bắt đầu r+3
+                    var days = new List<TimesheetDayDto>();
+                    int dr = r + 3;
+                    while (dr <= lastRow)
+                    {
+                        if (TryGetName(ws, dr, lastCol, out _)) break;             // sang người mới
+                        if (RowContains(ws, dr, lastCol, "Chữ ký")) { dr++; break; } // hết block
+
+                        ParseDayHalf(ws, dr, 2, year, days);   // nửa trái: cột 2..9
+                        ParseDayHalf(ws, dr, 10, year, days);  // nửa phải: cột 10..17
+                        dr++;
+                    }
+
+                    RecalculateNgayLam(stats, days);
+
+                    people.Add(new TimesheetPerson
+                    {
+                        Position = position++,
+                        Name = name,
+                        StatsJson = JsonSerializer.Serialize(stats, JsonOpts),
+                        DaysJson = JsonSerializer.Serialize(days.OrderBy(d => d.Date).ToList(), JsonOpts)
+                    });
+
+                    r = dr;
                 }
-
-                people.Add(new TimesheetPerson
-                {
-                    Position = position++,
-                    Name = name,
-                    StatsJson = JsonSerializer.Serialize(stats, JsonOpts),
-                    DaysJson = JsonSerializer.Serialize(days.OrderBy(d => d.Date).ToList(), JsonOpts)
-                });
-
-                r = dr;
             }
+
+            return people;
         }
 
-        return people;
-    }
+        /// <summary>Tính lại thống kê \"Ngày làm\" dựa trên ngày đi làm thực tế (Thứ 2-Thứ 6, loại trừ LỄ/OFF).</summary>
+        private static void RecalculateNgayLam(List<TimesheetStatDto> stats, List<TimesheetDayDto> days)
+        {
+            var workDayCount = days.Count(d => IsWorkDay(d));
+            var existing = stats.FirstOrDefault(s => s.Label == "Ngày làm");
+            if (existing != null)
+                existing.Value = workDayCount.ToString();
+            else
+                stats.Add(new TimesheetStatDto { Label = "Ngày làm", Value = workDayCount.ToString() });
+        }
 
-    /// <summary>Dò ô bắt đầu bằng "Tên:" trong dòng, trả về phần tên phía sau dấu hai chấm.</summary>
+        /// <summary>Ngày đi làm thực tế: là ngày trong tuần (Thứ 2-Thứ 6) và không phải LỄ hoặc OFF.</summary>
+        private static bool IsWorkDay(TimesheetDayDto d)
+        {
+            if (DateTime.TryParse(d.Date, out var date))
+            {
+                int dow = (int)date.DayOfWeek;
+                if (dow == 0 || dow == 6) return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(d.Status))
+            {
+                var statusUp = d.Status.ToUpperInvariant();
+                if (statusUp.Contains("LỄ") || statusUp.Contains("OFF"))
+                    return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>Dò ô bắt đầu bằng "Tên:" trong dòng, trả về phần tên phía sau dấu hai chấm.</summary>
     private static bool TryGetName(IXLWorksheet ws, int row, int lastCol, out string name)
     {
         name = "";
@@ -201,7 +235,12 @@ public class TimesheetController : ControllerBase
         return stats;
     }
 
-    /// <summary>Đọc 1 nửa bảng (1 ngày) từ startCol: [Ngày, Tuần, Vào, Ra, Vào, Ra, Vào, Ra].</summary>
+    /// <summary>
+    /// Đọc 1 nửa bảng (1 ngày) từ startCol: [Ngày, Tuần, Vào, Ra, Vào, Ra, Vào, Ra].
+    /// Theo đúng bố cục file: cặp 1 = buổi sáng (vào/ra), cặp 2 = buổi chiều (vào/ra),
+    /// cặp 3 (hiếm) là dự phòng. Mỗi ô giữ nguyên giá trị hiển thị: giờ "HH:mm",
+    /// hoặc nhãn OFF/LỄ, hoặc ghi chú (vd "XIN VỀ SỚM"). Trạng thái do ComputeStatus tính theo giờ.
+    /// </summary>
     private static void ParseDayHalf(IXLWorksheet ws, int row, int startCol, int year, List<TimesheetDayDto> days)
     {
         var date = ReadDate(ws.Cell(row, startCol), year);
@@ -209,28 +248,73 @@ public class TimesheetController : ControllerBase
 
         var weekday = ws.Cell(row, startCol + 1).GetString().Trim();
 
-        var ins = new List<TimeSpan>();
-        var outs = new List<TimeSpan>();
-        var statusSet = new List<string>();
-        bool late = false, early = false;
+        // 6 ô giờ: [0]=Sáng Vào, [1]=Sáng Ra, [2]=Chiều Vào, [3]=Chiều Ra, [4][5]=cặp dự phòng
+        var cells = new DayCell[6];
+        for (int k = 0; k < 6; k++) cells[k] = ReadCell(ws.Cell(row, startCol + 2 + k));
 
-        for (int k = 0; k < 3; k++)
-        {
-            ReadTimeInto(ws.Cell(row, startCol + 2 + k * 2), ins, statusSet, ref late);
-            ReadTimeInto(ws.Cell(row, startCol + 3 + k * 2), outs, statusSet, ref early);
-        }
+        var mIn = cells[0]; var mOut = cells[1];
+        var aIn = cells[2]; var aOut = cells[3];
 
-        if (late && !statusSet.Contains("đi muộn")) statusSet.Add("đi muộn");
-        if (early && !statusSet.Contains("về sớm")) statusSet.Add("về sớm");
+        // Cặp thứ 3 (hiếm): bổ sung cho buổi chiều để không mất lần chấm cuối ngày.
+        if (aIn.Display.Length == 0 && cells[4].Display.Length > 0) aIn = cells[4];
+        if (cells[5].Time is { } t3 && (aOut.Time == null || t3 > aOut.Time.Value)) aOut = cells[5];
+        else if (aOut.Display.Length == 0 && cells[5].Display.Length > 0) aOut = cells[5];
 
-        days.Add(new TimesheetDayDto
+        var dto = new TimesheetDayDto
         {
             Date = date.Value.ToString("yyyy-MM-dd"),
             Weekday = weekday,
-            CheckIn = ins.Count > 0 ? Fmt(ins.Min()) : null,
-            CheckOut = outs.Count > 0 ? Fmt(outs.Max()) : null,
-            Status = statusSet.Count > 0 ? string.Join(", ", statusSet) : null
-        });
+            MorningIn = NullIfEmpty(mIn.Display),
+            MorningOut = NullIfEmpty(mOut.Display),
+            AfternoonIn = NullIfEmpty(aIn.Display),
+            AfternoonOut = NullIfEmpty(aOut.Display),
+        };
+        dto.Status = ComputeStatus(dto);
+        days.Add(dto);
+    }
+
+    private static string? NullIfEmpty(string s) => string.IsNullOrEmpty(s) ? null : s;
+
+    /// <summary>
+    /// Quy tắc trạng thái: vào làm (sáng) sau 08:00 → "đi muộn"; ra nghỉ (chiều) trước 17:00 → "về sớm".
+    /// LỄ → "LỄ". OFF: chỉ buổi sáng → "Off sáng", chỉ chiều → "Off chiều", cả ngày → "Off".
+    /// </summary>
+    private static string? ComputeStatus(TimesheetDayDto d)
+    {
+        var parts = new List<string>();
+        if (new[] { d.MorningIn, d.MorningOut, d.AfternoonIn, d.AfternoonOut }
+                .Any(c => string.Equals(c?.Trim(), "LỄ", StringComparison.OrdinalIgnoreCase)))
+            parts.Add("LỄ");
+
+        var off = OffLabel(d);
+        if (off != null) parts.Add(off);
+
+        if (TryTime(d.MorningIn, out var mi) && mi > new TimeSpan(8, 0, 0)) parts.Add("đi muộn");
+        if (TryTime(d.AfternoonOut, out var ao) && ao < new TimeSpan(17, 0, 0)) parts.Add("về sớm");
+        return parts.Count > 0 ? string.Join(", ", parts) : null;
+    }
+
+    /// <summary>Nhãn OFF theo buổi: cả 2 buổi → "Off"; chỉ sáng → "Off sáng"; chỉ chiều → "Off chiều".</summary>
+    private static string? OffLabel(TimesheetDayDto d)
+    {
+        static bool IsOff(string? v) => !string.IsNullOrWhiteSpace(v) && v.Trim().ToUpperInvariant().StartsWith("OFF");
+        bool mOff = IsOff(d.MorningIn) || IsOff(d.MorningOut);
+        bool aOff = IsOff(d.AfternoonIn) || IsOff(d.AfternoonOut);
+        if (mOff && aOff) return "Off";
+        if (mOff) return "Off sáng";
+        if (aOff) return "Off chiều";
+        return null;
+    }
+
+    /// <summary>Phân tích chuỗi "HH:mm" thành TimeSpan. Trả về false nếu không phải giờ.</summary>
+    private static bool TryTime(string? s, out TimeSpan t)
+    {
+        t = default;
+        if (string.IsNullOrWhiteSpace(s)) return false;
+        var m = Regex.Match(s.Trim(), @"^(\d{1,2}):(\d{2})$");
+        if (m.Success && int.TryParse(m.Groups[1].Value, out var h) && int.TryParse(m.Groups[2].Value, out var mi)
+            && h < 24 && mi < 60) { t = new TimeSpan(h, mi, 0); return true; }
+        return false;
     }
 
     /// <summary>
@@ -247,26 +331,35 @@ public class TimesheetController : ControllerBase
         catch { return null; }
     }
 
+    /// <summary>Giá trị 1 ô giờ đã chuẩn hoá để hiển thị.</summary>
+    /// <param name="Display">Chuỗi hiển thị: "HH:mm", hoặc nhãn OFF/LỄ, hoặc ghi chú; "" nếu trống.</param>
+    /// <param name="Time">Giờ đã phân tích (nếu ô là giờ), dùng để so sánh sớm/muộn.</param>
+    /// <param name="Star">Ô có dấu "*" (bất thường: vào muộn / ra sớm).</param>
+    /// <param name="Marker">Nhãn ngày để gom vào trạng thái (LỄ/OFF...), null nếu là giờ/ghi chú.</param>
+    private readonly record struct DayCell(string Display, TimeSpan? Time, bool Star, string? Marker);
+
     /// <summary>
     /// Đọc 1 ô giờ: ưu tiên giá trị thời gian thật (TimeSpan/DateTime/số phân số), vì GetString
-    /// trả về định dạng 12 giờ sai. Nếu là text thì nhận LỄ/OFF và "HH:mm" (kèm * = bất thường).
+    /// trả về định dạng 12 giờ sai. Nếu là text thì nhận LỄ/OFF, "HH:mm" (kèm * = bất thường),
+    /// hoặc giữ nguyên ghi chú để hiển thị.
     /// </summary>
-    private static void ReadTimeInto(IXLCell cell, List<TimeSpan> times, List<string> statusSet, ref bool flag)
+    private static DayCell ReadCell(IXLCell cell)
     {
-        if (cell.IsEmpty()) return;
+        if (cell.IsEmpty()) return new DayCell("", null, false, null);
         try
         {
-            if (cell.DataType == XLDataType.TimeSpan) { times.Add(cell.GetTimeSpan()); return; }
-            if (cell.DataType == XLDataType.DateTime) { times.Add(cell.GetDateTime().TimeOfDay); return; }
-            if (cell.DataType == XLDataType.Number) { var v = cell.GetDouble(); if (v > 0 && v < 2) { times.Add(TimeSpan.FromDays(v)); return; } }
+            if (cell.DataType == XLDataType.TimeSpan) { var ts = cell.GetTimeSpan(); return new DayCell(Fmt(ts), ts, false, null); }
+            if (cell.DataType == XLDataType.DateTime) { var ts = cell.GetDateTime().TimeOfDay; return new DayCell(Fmt(ts), ts, false, null); }
+            if (cell.DataType == XLDataType.Number) { var v = cell.GetDouble(); if (v > 0 && v < 2) { var ts = TimeSpan.FromDays(v); return new DayCell(Fmt(ts), ts, false, null); } }
         }
         catch { /* rơi xuống đọc chuỗi */ }
 
         var s = cell.GetString().Trim();
-        if (s.Length == 0) return;
+        if (s.Length == 0) return new DayCell("", null, false, null);
+
         var upper = s.ToUpperInvariant();
-        if (upper is "LỄ" or "LE") { if (!statusSet.Contains("LỄ")) statusSet.Add("LỄ"); return; }
-        if (upper == "OFF") { if (!statusSet.Contains("OFF")) statusSet.Add("OFF"); return; }
+        if (upper is "LỄ" or "LE") return new DayCell("LỄ", null, false, "LỄ");
+        if (upper.StartsWith("OFF")) return new DayCell(s, null, false, s);   // "OFF", "OFF KL"...
 
         bool star = s.Contains('*');
         var m = Regex.Match(s.Replace("*", ""), @"(\d{1,2}):(\d{2})");
@@ -275,9 +368,12 @@ public class TimesheetController : ControllerBase
             int.TryParse(m.Groups[2].Value, out var mi) &&
             h < 24 && mi < 60)
         {
-            times.Add(new TimeSpan(h, mi, 0));
-            if (star) flag = true;
+            var ts = new TimeSpan(h, mi, 0);
+            return new DayCell(Fmt(ts), ts, star, null);
         }
+
+        // Ghi chú tự do (vd "XIN VỀ SỚM 30'") — giữ nguyên text để hiển thị trong ô.
+        return new DayCell(s, null, star, null);
     }
 
     private static string Fmt(TimeSpan t) => $"{t.Hours:D2}:{t.Minutes:D2}";
@@ -312,7 +408,12 @@ public class TimesheetController : ControllerBase
         var wb = new XLWorkbook();
         var ws = wb.Worksheets.Add("ChamCong");
 
-        string[] headers = { "Tên", "Ngày", "Thứ", "Giờ vào", "Giờ ra", "Trạng thái" };
+        string[] headers =
+        {
+            "Tên", "Ngày", "Thứ",
+            "Vào làm (sáng)", "Ra nghỉ (chiều)",
+            "Trạng thái"
+        };
         for (int c = 0; c < headers.Length; c++)
             ws.Cell(1, c + 1).Value = headers[c];
         var hr = ws.Range(1, 1, 1, headers.Length);
@@ -330,9 +431,9 @@ public class TimesheetController : ControllerBase
                 ws.Cell(row, 1).Value = p.Name;
                 ws.Cell(row, 2).Value = d.Date;
                 ws.Cell(row, 3).Value = d.Weekday;
-                ws.Cell(row, 4).Value = d.CheckIn ?? "";
-                ws.Cell(row, 5).Value = d.CheckOut ?? "";
-                ws.Cell(row, 6).Value = d.Status ?? "";
+                ws.Cell(row, 4).Value = d.MorningIn ?? "";
+                ws.Cell(row, 5).Value = d.AfternoonOut ?? "";
+                ws.Cell(row, 6).Value = ComputeStatus(d) ?? "";
                 row++;
             }
         }

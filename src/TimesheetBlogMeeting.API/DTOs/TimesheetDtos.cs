@@ -45,8 +45,15 @@ public class TimesheetDayDto
 {
     public string Date { get; set; } = string.Empty;     // "yyyy-MM-dd"
     public string Weekday { get; set; } = string.Empty;  // "Thứ sáu"
-    public string? CheckIn { get; set; }                 // giờ vào sớm nhất
-    public string? CheckOut { get; set; }                // giờ ra muộn nhất
+
+    // Buổi sáng: vào làm / ra nghỉ
+    public string? MorningIn { get; set; }               // "07:50" hoặc "OFF" / "LỄ"
+    public string? MorningOut { get; set; }              // "12:00"
+
+    // Buổi chiều: vào làm / ra nghỉ
+    public string? AfternoonIn { get; set; }             // "13:00"
+    public string? AfternoonOut { get; set; }            // "17:30" hoặc "OFF"
+
     public string? Status { get; set; }                  // "LỄ" / "OFF" / "đi muộn"...
 }
 
