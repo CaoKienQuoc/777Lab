@@ -1,6 +1,5 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -75,6 +74,11 @@ builder.Services.AddControllers();
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<IRealtimeNotifier, RealtimeNotifier>();
 
+// Email (SMTP) — gửi thông báo khi có blog mới
+var emailSettings = builder.Configuration.GetSection("Email").Get<EmailSettings>() ?? new EmailSettings();
+builder.Services.AddSingleton(emailSettings);
+builder.Services.AddSingleton<IEmailService, EmailService>();
+
 // Background job: tự động cộng phép đầu mỗi tháng
 builder.Services.AddSingleton<LeaveMonthlyRenewalService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<LeaveMonthlyRenewalService>());
@@ -123,7 +127,23 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.EnsureCreated();   // Tạo DB + bảng theo model nếu chưa tồn tại
+
+    // Khi chạy bằng Docker/Compose, SQL Server có thể chưa sẵn sàng ngay lúc app
+    // khởi động. Thử kết nối lại vài lần trước khi bỏ cuộc (chạy local không bị
+    // ảnh hưởng vì lần thử đầu tiên đã thành công ngay).
+    for (var attempt = 1; ; attempt++)
+    {
+        try
+        {
+            db.Database.EnsureCreated();   // Tạo DB + bảng theo model nếu chưa tồn tại
+            break;
+        }
+        catch (Exception ex) when (attempt < 12)
+        {
+            Console.WriteLine($"[DB] Chưa kết nối được SQL Server (lần {attempt}/12): {ex.Message}. Thử lại sau 5 giây...");
+            Thread.Sleep(5000);
+        }
+    }
 
     // EnsureCreated() KHÔNG thêm bảng mới vào database đã tồn tại từ trước.
     // Bảng "Phép tồn" dùng cột ĐỘNG: 1 bảng định nghĩa cột + 1 bảng dữ liệu dòng (JSON).
@@ -173,6 +193,20 @@ BEGIN
         [RanAt] datetime2 NOT NULL,
         CONSTRAINT [PK_LeaveRenewalLogs] PRIMARY KEY ([Id])
     );
+END
+IF OBJECT_ID(N'[RegulationPosts]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [RegulationPosts] (
+        [Id] uniqueidentifier NOT NULL,
+        [Title] nvarchar(300) NOT NULL,
+        [Content] nvarchar(max) NOT NULL,
+        [ImageUrl] nvarchar(400) NULL,
+        [AuthorId] uniqueidentifier NOT NULL,
+        [CreatedAt] datetime2 NOT NULL,
+        [ScheduledAt] datetime2 NULL,
+        CONSTRAINT [PK_RegulationPosts] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_RegulationPosts_Users_AuthorId] FOREIGN KEY ([AuthorId]) REFERENCES [Users]([Id]) ON DELETE CASCADE
+    );
 END");
 
     DbSeeder.Seed(db);             // Tạo tài khoản admin cố định
@@ -190,18 +224,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
-// Chạy phía sau reverse proxy (nginx): đọc các header X-Forwarded-* để app biết
-// scheme/IP thật của client. Đặt trước mọi middleware khác trong pipeline.
-var fwdOptions = new ForwardedHeadersOptions
-{
-    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
-};
-// Mặc định chỉ tin proxy ở localhost. Xoá danh sách = tin proxy ở mọi IP
-// (tiện khi nginx nằm ở máy khác). Muốn chặt hơn: thêm IP nginx vào KnownProxies.
-fwdOptions.KnownNetworks.Clear();
-fwdOptions.KnownProxies.Clear();
-app.UseForwardedHeaders(fwdOptions);
 
 // Phục vụ frontend tĩnh trong wwwroot (login.html, index.html, css, js, uploads)
 app.UseDefaultFiles();

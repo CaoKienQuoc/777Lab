@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/css/style.css?v=10" />
+  <link rel="stylesheet" href="/css/style.css?v=12" />
   <style>
 .leave-search-wrapper {
   display: flex; align-items: center;
@@ -84,6 +84,7 @@
           <button class="tab active" data-view="blog" id="tab-blog"><span class="ico"><img src="/img/chars-sm/Char 1.2.png" width="20" height="20"></span> Blog</button>
           <button class="tab" data-view="leave"><span class="ico"><img src="/img/chars-sm/Char 4.2.png" width="20" height="20"></span> Phép tồn</button>
           <button class="tab" data-view="timesheet"><span class="ico"><img src="/img/chars-sm/Char 3.1_pink.png" width="20" height="20"></span> Chấm công</button>
+          <button class="tab" data-view="regulation"><span class="ico"><img src="/img/chars-sm/Char 5.1.1.png" width="20" height="20"></span> Quy định</button>
           <button class="tab" data-view="meeting"><span class="ico"><img src="/img/chars-sm/Char 2.1.png" width="20" height="20"></span> Lịch họp</button>
           <button class="tab hidden" data-view="users" id="tab-users"><span class="ico">👥</span> Người dùng</button>
       </div>
@@ -139,6 +140,21 @@
       </div>
     </section>
 
+    <!-- ===== View: Regulation (Quy định) ===== -->
+    <section class="view" id="view-regulation">
+      <div class="view-head">
+      <div class="titles">
+        <h2 data-i18n="regulationAndDocs">Quy định</h2>
+      </div>
+      <div class="view-actions">
+        <button class="btn btn-primary" id="btn-new-regulation" data-i18n="addNewRegulation">+ Thêm quy định</button>
+      </div>
+      </div>
+      <div id="regulation-container">
+        <div class="spinner"></div>
+      </div>
+    </section>
+
     <!-- ===== View: Meeting ===== -->
     <section class="view" id="view-meeting">
       <div class="view-head">
@@ -182,12 +198,13 @@
   <div id="toast-stack"></div>
 
   <script src="/js/lib/signalr.min.js"></script>
-  <script src="/js/api.js?v=4"></script>
-  <script src="/js/app.js?v=7"></script>
+  <script src="/js/api.js?v=5"></script>
+  <script src="/js/app.js?v=10"></script>
   <script src="/js/blog.js?v=7"></script>
+  <script src="/js/regulation.js?v=1"></script>
   <script src="/js/timesheet.js?v=11"></script>
   <script src="/js/leave.js?v=4"></script>
   <script src="/js/meeting.js?v=4"></script>
-  <script src="/js/users.js?v=4"></script>
+  <script src="/js/users.js?v=5"></script>
 </body>
 </html>

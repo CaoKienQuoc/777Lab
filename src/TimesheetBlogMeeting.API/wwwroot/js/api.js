@@ -26,6 +26,11 @@ function saveAuth(auth, remember) {
     role: auth.role
   }));
 }
+// Ghi lại thông tin user vào đúng storage đang dùng (vd sau khi bổ sung email)
+function persistUser(user) {
+  if (localStorage.getItem('token')) localStorage.setItem('user', JSON.stringify(user));
+  else sessionStorage.setItem('user', JSON.stringify(user));
+}
 function logout() {
   localStorage.removeItem('token');
   localStorage.removeItem('user');

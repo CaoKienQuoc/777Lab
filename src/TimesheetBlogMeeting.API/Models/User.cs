@@ -37,5 +37,6 @@ public class User
 
     // Quan hệ
     public ICollection<BlogPost> BlogPosts { get; set; } = new List<BlogPost>();
+    public ICollection<RegulationPost> RegulationPosts { get; set; } = new List<RegulationPost>();
     public ICollection<Meeting> Meetings { get; set; } = new List<Meeting>();
 }

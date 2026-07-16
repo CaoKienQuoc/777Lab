@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using Google.Apis.Auth;
 using Microsoft.AspNetCore.Authorization;
@@ -26,6 +27,9 @@ public class AuthController : ControllerBase
         _config = config;
     }
 
+    // Chỉ cho phép đăng nhập Google bằng email thuộc domain công ty (so khớp chữ thường).
+    private const string AllowedEmailDomain = "@777lab.com.vn";
+
     /// <summary>Đăng nhập bằng tên đăng nhập / mật khẩu, trả về JWT token.</summary>
     [HttpPost("login")]
     public async Task<ActionResult<AuthResponse>> Login(LoginRequest request)
@@ -44,15 +48,13 @@ public class AuthController : ControllerBase
         return Ok(BuildResponse(user));
     }
 
-    /// <summary>
-    /// Đăng ký tài khoản mới (luôn là Customer). Đăng ký thành công thì tự đăng nhập luôn
-    /// (trả về JWT token như khi login).
-    /// </summary>
+    /// <summary>Tự đăng ký tài khoản nội bộ (username + mật khẩu). Đăng ký xong tự đăng nhập.</summary>
     [HttpPost("register")]
     public async Task<ActionResult<AuthResponse>> Register(RegisterRequest request)
     {
         var username = request.Username.Trim();
         var fullName = request.FullName.Trim();
+        var email = request.Email.Trim().ToLowerInvariant();
 
         if (string.IsNullOrWhiteSpace(fullName))
             return BadRequest(new { message = "Vui lòng nhập họ và tên." });
@@ -60,13 +62,18 @@ public class AuthController : ControllerBase
             return BadRequest(new { message = "Tên đăng nhập phải có ít nhất 3 ký tự." });
         if (request.Password.Length < 6)
             return BadRequest(new { message = "Mật khẩu phải có ít nhất 6 ký tự." });
+        if (string.IsNullOrWhiteSpace(email) || !new EmailAddressAttribute().IsValid(email))
+            return BadRequest(new { message = "Email không hợp lệ." });
 
         if (await _db.Users.AnyAsync(u => u.Username == username))
             return Conflict(new { message = "Tên đăng nhập đã tồn tại, vui lòng chọn tên khác." });
+        if (await _db.Users.AnyAsync(u => u.Email == email))
+            return Conflict(new { message = "Email đã được sử dụng cho tài khoản khác." });
 
         var user = new User
         {
             Username = username,
+            Email = email,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
             FullName = fullName,
             AuthProvider = "Local",
@@ -109,6 +116,11 @@ public class AuthController : ControllerBase
             return Unauthorized(new { message = "Email Google chưa được xác minh." });
 
         var email = payload.Email.Trim().ToLowerInvariant();
+
+        // Chỉ chấp nhận email thuộc domain công ty (@777Lab.com). email đã ở dạng chữ thường.
+        if (!email.EndsWith(AllowedEmailDomain))
+            return Unauthorized(new { message = "Email không khả dụng. Chỉ chấp nhận email có đuôi @777Lab.com.vn" });
+
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email);
 
         if (user == null)
@@ -138,18 +150,77 @@ public class AuthController : ControllerBase
         return Ok(new { clientId = _config["Google:ClientId"] });
     }
 
-    /// <summary>Lấy thông tin tài khoản đang đăng nhập (từ token).</summary>
+    /// <summary>Lấy thông tin tài khoản đang đăng nhập (kèm email để biết đã có hay chưa).</summary>
     [HttpGet("me")]
     [Authorize]
-    public ActionResult Me()
+    public async Task<ActionResult> Me()
     {
+        var idRaw = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        Guid.TryParse(idRaw, out var id);
+        var user = await _db.Users.FindAsync(id);
+
         return Ok(new
         {
-            UserId = User.FindFirstValue(ClaimTypes.NameIdentifier),
+            UserId = idRaw,
             Username = User.FindFirstValue(ClaimTypes.Name),
             FullName = User.FindFirstValue("fullName"),
-            Role = User.FindFirstValue(ClaimTypes.Role)
+            Role = User.FindFirstValue(ClaimTypes.Role),
+            Email = user?.Email ?? string.Empty
         });
+    }
+
+    /// <summary>Người dùng tự bổ sung / cập nhật email cho chính tài khoản của mình.</summary>
+    [HttpPost("email")]
+    [Authorize]
+    public async Task<ActionResult> SetEmail(SetEmailRequest request)
+    {
+        var idRaw = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(idRaw, out var id))
+            return Unauthorized(new { message = "Phiên đăng nhập không hợp lệ." });
+
+        var email = request.Email.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(email) || !new EmailAddressAttribute().IsValid(email))
+            return BadRequest(new { message = "Email không hợp lệ." });
+
+        if (await _db.Users.AnyAsync(u => u.Email == email && u.Id != id))
+            return Conflict(new { message = "Email đã được sử dụng cho tài khoản khác." });
+
+        var user = await _db.Users.FindAsync(id);
+        if (user == null) return NotFound(new { message = "Không tìm thấy tài khoản." });
+
+        user.Email = email;
+        await _db.SaveChangesAsync();
+        return Ok(new { message = "Đã cập nhật email.", email });
+    }
+
+    /// <summary>Người dùng tự đổi mật khẩu của chính mình (phải nhập đúng mật khẩu hiện tại).</summary>
+    [HttpPost("password")]
+    [Authorize]
+    public async Task<ActionResult> ChangePassword(ChangePasswordRequest request)
+    {
+        var idRaw = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(idRaw, out var id))
+            return Unauthorized(new { message = "Phiên đăng nhập không hợp lệ." });
+
+        var user = await _db.Users.FindAsync(id);
+        if (user == null) return NotFound(new { message = "Không tìm thấy tài khoản." });
+
+        var newPwd = request.NewPassword ?? string.Empty;
+        if (newPwd.Length < 6)
+            return BadRequest(new { message = "Mật khẩu mới phải có ít nhất 6 ký tự." });
+
+        // Tài khoản đã có mật khẩu -> bắt buộc nhập đúng mật khẩu hiện tại.
+        // (Tài khoản Google chưa có mật khẩu -> cho phép đặt mật khẩu lần đầu.)
+        if (!string.IsNullOrEmpty(user.PasswordHash))
+        {
+            if (string.IsNullOrEmpty(request.CurrentPassword) ||
+                !BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash))
+                return BadRequest(new { message = "Mật khẩu hiện tại không đúng." });
+        }
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPwd);
+        await _db.SaveChangesAsync();
+        return Ok(new { message = "Đã đổi mật khẩu." });
     }
 
     private AuthResponse BuildResponse(User user) => new()

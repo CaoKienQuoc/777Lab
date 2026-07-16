@@ -28,6 +28,9 @@ public class UsersController : ControllerBase
 
     private static readonly string[] ValidRoles = { "Admin", "Customer" };
 
+    // Mật khẩu mặc định khi admin bấm "Đặt lại mật khẩu".
+    public const string DefaultPassword = "User@123";
+
     [HttpGet]
     public async Task<ActionResult<IEnumerable<UserResponse>>> GetAll()
     {
@@ -110,6 +113,26 @@ public class UsersController : ControllerBase
             FullName = user.FullName,
             Role = user.Role,
             CreatedAt = user.CreatedAt
+        });
+    }
+
+    /// <summary>
+    /// Đặt lại mật khẩu của người dùng về mật khẩu mặc định (User@123).
+    /// </summary>
+    [HttpPost("{id:guid}/reset-password")]
+    public async Task<IActionResult> ResetPassword(Guid id)
+    {
+        var user = await _db.Users.FindAsync(id);
+        if (user == null) return NotFound(new { message = "Không tìm thấy người dùng." });
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(DefaultPassword);
+        await _db.SaveChangesAsync();
+        await _rt.NotifyAsync("users", "updated");
+
+        return Ok(new
+        {
+            message = $"Đã đặt lại mật khẩu của \"{user.Username}\" về \"{DefaultPassword}\".",
+            password = DefaultPassword
         });
     }
 

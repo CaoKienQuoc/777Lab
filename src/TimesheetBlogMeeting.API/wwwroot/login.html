@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/css/style.css?v=7" />
+  <link rel="stylesheet" href="/css/style.css?v=12" />
   <style>
 .lang-flag {
   width: 28px; height: 20px; cursor: pointer; margin-left: 12px; border-radius: 3px;
@@ -22,7 +22,7 @@
     <img id="lang-flag" class="lang-flag" src="https://flagcdn.com/vn.svg" alt="VI" title="Chuyển sang Nhật" style="position:absolute; top:16px; right:16px;" />
     <div class="login-card">
       <div class="login-brand">
-        <img class="login-logo" src="/img/logo.png" alt="777LAB" />
+        <img class="login-logo" src="/img/logo_login.png" alt="777LAB" />
       </div>
 
       <form id="login-form">
@@ -43,16 +43,13 @@
         </button>
       </form>
 
+      <div class="login-divider" id="login-divider"><span>hoặc</span></div>
+      <div id="google-btn" class="google-btn-wrap"></div>
+
       <p class="login-alt">
         <span data-i18n="noAccount">Chưa có tài khoản?</span>
         <a href="/register.html" data-i18n="register">Đăng ký</a>
       </p>
-
-      <!-- TẠM ẨN đăng nhập Google (chưa có domain + HTTPS nên Google chặn origin).
-           Bật lại: bỏ comment khối này và thẻ script GSI ở cuối trang.
-      <div class="login-divider" id="login-divider"><span>hoặc</span></div>
-      <div id="google-btn" class="google-btn-wrap"></div>
-      -->
     </div>
   </div>
 
@@ -109,9 +106,7 @@
       });
     })();
   </script>
-  <!-- TẠM ẨN đăng nhập Google — bật lại bằng cách bỏ comment dòng dưới:
   <script src="https://accounts.google.com/gsi/client" onload="onGoogleLoad()" async defer></script>
-  -->
 
 </body>
 </html>

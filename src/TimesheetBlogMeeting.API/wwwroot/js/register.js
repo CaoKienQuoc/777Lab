@@ -9,13 +9,18 @@ document.getElementById('register-form').addEventListener('submit', async (e) =>
   e.preventDefault();
   const btn = document.getElementById('register-btn');
   const fullName = document.getElementById('fullName').value.trim();
+  const email = document.getElementById('email').value.trim();
   const username = document.getElementById('username').value.trim();
   const password = document.getElementById('password').value;
   const confirm = document.getElementById('confirm').value;
 
   // Kiểm tra phía client cho thân thiện (server vẫn kiểm tra lại)
-  if (!fullName || !username || !password) {
+  if (!fullName || !email || !username || !password) {
     showToast('Vui lòng nhập đầy đủ thông tin.', 'err');
+    return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showToast('Email không hợp lệ.', 'err');
     return;
   }
   if (username.length < 3) {
@@ -36,7 +41,7 @@ document.getElementById('register-form').addEventListener('submit', async (e) =>
   try {
     const auth = await api('/api/auth/register', {
       method: 'POST',
-      body: { fullName, username, password }
+      body: { fullName, email, username, password }
     });
     saveAuth(auth); // đăng ký xong tự đăng nhập luôn
     showToast('Tạo tài khoản thành công!', 'ok');

@@ -11,29 +11,23 @@ using TimesheetBlogMeeting.API.Services;
 
 namespace TimesheetBlogMeeting.API.Controllers;
 
-/// <summary>
-/// Quản lý bài blog. Mọi người dùng đã đăng nhập đều có thể đăng bài.
-/// Chỉ tác giả hoặc admin mới được sửa/xoá bài.
-/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class BlogController : ControllerBase
+public class RegulationController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly IWebHostEnvironment _env;
     private readonly IRealtimeNotifier _rt;
-    private readonly IEmailService _email;
 
     private static readonly string[] AllowedImageExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
-    private const long MaxImageBytes = 5 * 1024 * 1024; // 5MB
+    private const long MaxImageBytes = 5 * 1024 * 1024;
 
-    public BlogController(AppDbContext db, IWebHostEnvironment env, IRealtimeNotifier rt, IEmailService email)
+    public RegulationController(AppDbContext db, IWebHostEnvironment env, IRealtimeNotifier rt)
     {
         _db = db;
         _env = env;
         _rt = rt;
-        _email = email;
     }
 
     private Guid CurrentUserId
@@ -48,36 +42,29 @@ public class BlogController : ControllerBase
     private bool IsAdmin => User.IsInRole("Admin");
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<BlogResponse>>> GetAll([FromQuery] DateTime? scheduledDate)
+    public async Task<ActionResult<IEnumerable<RegulationResponse>>> GetAll()
     {
-        IQueryable<BlogPost> query = _db.BlogPosts.Include(b => b.Author);
-
-        if (scheduledDate.HasValue)
-        {
-            var targetDate = scheduledDate.Value.Date;
-            query = query.Where(b => b.ScheduledAt.HasValue && b.ScheduledAt.Value.Date == targetDate)
-                         .OrderBy(b => b.ScheduledAt);
-        }
-        else
-        {
-            query = query.OrderByDescending(b => b.CreatedAt);
-        }
-
-        var posts = await query.Select(b => ToResponse(b)).ToListAsync();
+        var posts = await _db.RegulationPosts
+            .Include(r => r.Author)
+            .OrderByDescending(r => r.CreatedAt)
+            .Select(r => ToResponse(r))
+            .ToListAsync();
         return Ok(posts);
     }
 
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult<BlogResponse>> GetById(Guid id)
+    public async Task<ActionResult<RegulationResponse>> GetById(Guid id)
     {
-        var post = await _db.BlogPosts.Include(b => b.Author).FirstOrDefaultAsync(b => b.Id == id);
-        if (post == null) return NotFound(new { message = "Không tìm thấy bài viết." });
+        var post = await _db.RegulationPosts.Include(r => r.Author).FirstOrDefaultAsync(r => r.Id == id);
+        if (post == null) return NotFound(new { message = "Không tìm thấy quy định." });
         return Ok(ToResponse(post));
     }
 
     [HttpPost]
-    public async Task<ActionResult<BlogResponse>> Create([FromForm] BlogFormRequest request)
+    public async Task<ActionResult<RegulationResponse>> Create([FromForm] RegulationFormRequest request)
     {
+        if (!IsAdmin) return Forbid();
+
         string? imageUrl = null;
         if (request.Image != null)
         {
@@ -86,7 +73,7 @@ public class BlogController : ControllerBase
             imageUrl = url;
         }
 
-        var post = new BlogPost
+        var post = new RegulationPost
         {
             Title = request.Title.Trim(),
             Content = request.Content,
@@ -96,32 +83,23 @@ public class BlogController : ControllerBase
             ScheduledAt = ParseScheduledAt(request.ScheduledDate, request.ScheduledTime)
         };
 
-        _db.BlogPosts.Add(post);
+        _db.RegulationPosts.Add(post);
         await _db.SaveChangesAsync();
 
-        await _db.Entry(post).Reference(b => b.Author).LoadAsync();
+        await _db.Entry(post).Reference(r => r.Author).LoadAsync();
 
-        // Báo real-time cho mọi client đang mở app: có bài mới
-        await _rt.NotifyAsync("blog", "created");
-
-        // Gửi email thông báo bài mới tới mọi người dùng có email (chạy nền, không chặn request)
-        var recipients = await _db.Users
-            .Where(u => u.Email != null && u.Email != "" && u.Id != post.AuthorId)
-            .Select(u => u.Email!)
-            .ToListAsync();
-        _email.QueueBlogNotification(post.Title, post.Content, post.CreatedAt, recipients);
+        await _rt.NotifyAsync("regulation", "created");
 
         return CreatedAtAction(nameof(GetById), new { id = post.Id }, ToResponse(post));
     }
 
     [HttpPut("{id:guid}")]
-    public async Task<ActionResult<BlogResponse>> Update(Guid id, [FromForm] BlogFormRequest request)
+    public async Task<ActionResult<RegulationResponse>> Update(Guid id, [FromForm] RegulationFormRequest request)
     {
-        var post = await _db.BlogPosts.Include(b => b.Author).FirstOrDefaultAsync(b => b.Id == id);
-        if (post == null) return NotFound(new { message = "Không tìm thấy bài viết." });
+        if (!IsAdmin) return Forbid();
 
-        if (post.AuthorId != CurrentUserId && !IsAdmin)
-            return Forbid();
+        var post = await _db.RegulationPosts.Include(r => r.Author).FirstOrDefaultAsync(r => r.Id == id);
+        if (post == null) return NotFound(new { message = "Không tìm thấy quy định." });
 
         post.Title = request.Title.Trim();
         post.Content = request.Content;
@@ -142,28 +120,25 @@ public class BlogController : ControllerBase
 
         await _db.SaveChangesAsync();
 
-        await _rt.NotifyAsync("blog", "updated");
+        await _rt.NotifyAsync("regulation", "updated");
         return Ok(ToResponse(post));
     }
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var post = await _db.BlogPosts.FindAsync(id);
-        if (post == null) return NotFound(new { message = "Không tìm thấy bài viết." });
+        if (!IsAdmin) return Forbid();
 
-        if (post.AuthorId != CurrentUserId && !IsAdmin)
-            return Forbid();
+        var post = await _db.RegulationPosts.FindAsync(id);
+        if (post == null) return NotFound(new { message = "Không tìm thấy quy định." });
 
         DeletePhysicalImage(post.ImageUrl);
-        _db.BlogPosts.Remove(post);
+        _db.RegulationPosts.Remove(post);
         await _db.SaveChangesAsync();
 
-        await _rt.NotifyAsync("blog", "deleted");
+        await _rt.NotifyAsync("regulation", "deleted");
         return NoContent();
     }
-
-    // ---- Helpers ----
 
     private static DateTime? ParseScheduledAt(string? date, string? time)
     {
@@ -178,7 +153,6 @@ public class BlogController : ControllerBase
 
     private string GetUploadsDir()
     {
-        // WebRootPath có thể null nếu không có thư mục wwwroot được cấu hình
         var webRoot = _env.WebRootPath
                       ?? Path.Combine(_env.ContentRootPath, "wwwroot");
         return Path.Combine(webRoot, "uploads");
@@ -224,19 +198,19 @@ public class BlogController : ControllerBase
         var fullPath = Path.Combine(webRoot, relative.Replace('/', Path.DirectorySeparatorChar));
         if (System.IO.File.Exists(fullPath))
         {
-            try { System.IO.File.Delete(fullPath); } catch { /* bỏ qua */ }
+            try { System.IO.File.Delete(fullPath); } catch { }
         }
     }
 
-    private static BlogResponse ToResponse(BlogPost b) => new()
+    private static RegulationResponse ToResponse(RegulationPost r) => new()
     {
-        Id = b.Id,
-        Title = b.Title,
-        Content = b.Content,
-        ImageUrl = b.ImageUrl,
-        AuthorId = b.AuthorId,
-        AuthorName = b.Author?.FullName ?? "",
-        CreatedAt = b.CreatedAt,
-        ScheduledAt = b.ScheduledAt
+        Id = r.Id,
+        Title = r.Title,
+        Content = r.Content,
+        ImageUrl = r.ImageUrl,
+        AuthorId = r.AuthorId,
+        AuthorName = r.Author?.FullName ?? "",
+        CreatedAt = r.CreatedAt,
+        ScheduledAt = r.ScheduledAt
     };
 }

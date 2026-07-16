@@ -1,0 +1,49 @@
+# Chạy: docker compose up -d --build
+# Gồm 2 service: db (SQL Server) + api (ASP.NET Core). Dữ liệu lưu trong volume.
+
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: timesheet-db
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${SA_PASSWORD}"
+      MSSQL_PID: "Express"          # Bản Express miễn phí (giới hạn DB 10GB, đủ dùng)
+    volumes:
+      - mssql-data:/var/opt/mssql   # Dữ liệu DB nằm ở đây, không mất khi rebuild
+    # Cổng 1433 mở ra LAN để nối bằng SSMS / Azure Data Studio:
+    ports:
+      - "1433:1433"
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: timesheet-api
+    depends_on:
+      - db
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Production"
+      # Ghi đè chuỗi kết nối trong appsettings.json -> trỏ vào container 'db'
+      ConnectionStrings__DefaultConnection: "Server=db,1433;Database=TimesheetBlogMeetingDb;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True;Encrypt=False;MultipleActiveResultSets=true"
+      # Email (Gmail SMTP) — điền SMTP_USER/SMTP_PASSWORD trong .env, đặt EMAIL_ENABLED=true để bật
+      Email__Enabled: "${EMAIL_ENABLED:-false}"
+      Email__Host: "smtp.gmail.com"
+      Email__Port: "587"
+      Email__User: "${SMTP_USER:-}"
+      Email__Password: "${SMTP_PASSWORD:-}"
+      Email__From: "${SMTP_USER:-}"
+      Email__FromName: "Blog 777LAB"
+      Email__AppUrl: "http://192.168.1.119:5000"
+      # (Tùy chọn) Đổi khóa ký JWT khi chạy thật:
+      # Jwt__Key: "DAT_MOT_KHOA_BI_MAT_NGAU_NHIEN_IT_NHAT_32_KY_TU"
+    ports:
+      - "5000:8080"                 # Truy cập http://<ip-server>:5000  (host:container)
+    volumes:
+      - uploads:/app/wwwroot/uploads # Giữ lại ảnh người dùng upload
+    restart: unless-stopped
+
+volumes:
+  mssql-data:
+  uploads:

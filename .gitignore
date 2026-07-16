@@ -17,6 +17,9 @@ out/
 appsettings.Development.local.json
 *.pfx
 
+# ---- Docker / bí mật (mật khẩu DB) ----
+.env
+
 # ---- Uploaded files (giữ thư mục nhưng bỏ ảnh người dùng tải lên) ----
 src/TimesheetBlogMeeting.API/wwwroot/uploads/*
 !src/TimesheetBlogMeeting.API/wwwroot/uploads/.gitkeep

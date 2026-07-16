@@ -1,0 +1,14 @@
+# Không đưa các thứ sau vào build context của Docker
+**/bin/
+**/obj/
+**/out/
+**/.vs/
+**/.vscode/
+**/.idea/
+.git/
+.gitignore
+**/*.user
+**/*.suo
+.env
+*.cmd
+DEPLOY.md

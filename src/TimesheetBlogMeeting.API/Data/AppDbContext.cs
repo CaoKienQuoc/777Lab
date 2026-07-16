@@ -9,6 +9,7 @@ public class AppDbContext : DbContext
 
     public DbSet<User> Users => Set<User>();
     public DbSet<BlogPost> BlogPosts => Set<BlogPost>();
+    public DbSet<RegulationPost> RegulationPosts => Set<RegulationPost>();
     public DbSet<TimesheetEntry> TimesheetEntries => Set<TimesheetEntry>();
     public DbSet<TimesheetPerson> TimesheetPeople => Set<TimesheetPerson>();
     public DbSet<Meeting> Meetings => Set<Meeting>();
@@ -23,6 +24,7 @@ public class AppDbContext : DbContext
         // Guid PKs — generated on add (client-side, works with SQLite)
         modelBuilder.Entity<User>().Property(u => u.Id).ValueGeneratedOnAdd();
         modelBuilder.Entity<BlogPost>().Property(b => b.Id).ValueGeneratedOnAdd();
+        modelBuilder.Entity<RegulationPost>().Property(r => r.Id).ValueGeneratedOnAdd();
         modelBuilder.Entity<TimesheetEntry>().Property(t => t.Id).ValueGeneratedOnAdd();
         modelBuilder.Entity<TimesheetPerson>().Property(t => t.Id).ValueGeneratedOnAdd();
         modelBuilder.Entity<Meeting>().Property(m => m.Id).ValueGeneratedOnAdd();
@@ -45,6 +47,13 @@ public class AppDbContext : DbContext
             .HasOne(b => b.Author)
             .WithMany(u => u.BlogPosts)
             .HasForeignKey(b => b.AuthorId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Khi xoá user thì xoá luôn các quy định của user đó
+        modelBuilder.Entity<RegulationPost>()
+            .HasOne(r => r.Author)
+            .WithMany(u => u.RegulationPosts)
+            .HasForeignKey(r => r.AuthorId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Khi xoá user thì xoá luôn các lịch họp của user đó

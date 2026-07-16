@@ -86,7 +86,8 @@ a:hover { text-decoration: underline; }
 
 /* ---------- Forms ---------- */
 label { display: block; font-size: 13px; font-weight: 500; color: var(--ink-soft); margin-bottom: 6px; }
-input[type="text"], input[type="password"], input[type="number"],
+input[type="text"], input[type="password"], input[type="email"],
+input[type="search"], input[type="tel"], input[type="url"], input[type="number"],
 input[type="date"], input[type="time"], input[type="datetime-local"], textarea, select {
   width: 100%;
   font-family: var(--font-sans);
@@ -134,7 +135,11 @@ textarea { resize: vertical; min-height: 120px; line-height: 1.6; }
   color: var(--accent); font-weight: 600; margin-bottom: 8px;
 }
 .login-brand h1 { font-size: 30px; line-height: 1.15; }
-.login-brand .login-logo { height: clamp(48px, 9vw, 76px); width: auto; display: block; margin: 0 auto; }
+/* logo.png là logo TRẮNG (cho header nền xanh). Trên login/register card nền sáng
+   nó sẽ vô hình -> đặt trên 1 "badge" nền xanh giống header để hiện rõ. */
+.login-brand .login-logo {
+  height: clamp(48px, 9vw, 76px); width: auto; display: block; margin: 0 auto; padding: 14px 22px; border-radius: 16px; box-sizing: content-box;
+}
 .login-brand p { color: var(--muted-text); font-size: 13.5px; margin: 8px 0 0; }
 .login-hint {
   margin-top: 18px; font-size: 12.5px; color: var(--muted-text);

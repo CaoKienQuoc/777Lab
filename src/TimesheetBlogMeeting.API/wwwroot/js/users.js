@@ -44,6 +44,7 @@ function renderUsers(users) {
         <td>${formatDate(u.createdAt)}</td>
         <td class="num"><div class="row-actions">
           <button class="btn btn-ghost btn-sm" data-edit="${u.id}" title="${t('save')}">✎</button>
+          <button class="btn btn-ghost btn-sm" data-reset="${u.id}" title="${t('resetPassword')}">🔑</button>
           <button class="btn btn-danger btn-sm" data-del="${u.id}" title="${t('deletePost')}" ${isRoot ? 'disabled' : ''}>🗑</button>
         </div></td>
       </tr>`;
@@ -62,6 +63,8 @@ function renderUsers(users) {
 
   box.querySelectorAll('[data-edit]').forEach(b =>
     b.addEventListener('click', () => openUserForm(b.dataset.edit, users)));
+  box.querySelectorAll('[data-reset]').forEach(b =>
+    b.addEventListener('click', () => resetUserPassword(b.dataset.reset, users)));
   box.querySelectorAll('[data-del]:not([disabled])').forEach(b =>
     b.addEventListener('click', () => deleteUser(b.dataset.del, users)));
 }
@@ -163,5 +166,27 @@ function deleteUser(id, users) {
       showToast(t('userDeleted'), 'ok');
       loadUsers();
     } catch (err) { showToast(err.message, 'err'); }
+  });
+}
+
+function resetUserPassword(id, users) {
+  const u = users.find(x => x.id === id);
+  openModal(t('resetPassword'),
+    `<p>${t('resetPasswordConfirm')} <b>${escapeHtml(u ? u.username : '')}</b>?</p>
+     <p class="muted-note">${t('resetPasswordNote')}</p>`,
+    `<button class="btn" onclick="closeModal()">${t('cancel')}</button>
+     <button class="btn btn-primary" id="confirm-reset-pw">${t('resetPassword')}</button>`);
+  document.getElementById('confirm-reset-pw').addEventListener('click', async () => {
+    const btn = document.getElementById('confirm-reset-pw');
+    btn.disabled = true; btn.textContent = t('saving');
+    try {
+      await api('/api/users/' + id + '/reset-password', { method: 'POST' });
+      closeModal();
+      showToast(t('resetPasswordDone'), 'ok');
+      loadUsers();
+    } catch (err) {
+      showToast(err.message, 'err');
+      btn.disabled = false; btn.textContent = t('resetPassword');
+    }
   });
 }

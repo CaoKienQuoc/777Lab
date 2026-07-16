@@ -18,6 +18,20 @@ public class RegisterRequest
     public string Username { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+}
+
+// Người dùng tự bổ sung email cho tài khoản đang đăng nhập.
+public class SetEmailRequest
+{
+    public string Email { get; set; } = string.Empty;
+}
+
+// Người dùng tự đổi mật khẩu của chính mình.
+public class ChangePasswordRequest
+{
+    public string CurrentPassword { get; set; } = string.Empty;
+    public string NewPassword { get; set; } = string.Empty;
 }
 
 // ID token (JWT) do Google Identity Services trả về phía client.
